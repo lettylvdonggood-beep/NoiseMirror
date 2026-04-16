@@ -1,0 +1,61 @@
+第三步:发布到网上(让别人能访问)
+3.1 在 GitHub 创建仓库
+
+登录 https://github.com
+右上角点 + → New repository
+Repository name 填:noisemirror
+选 Public(公开,免费用 Vercel 必须是 Public)
+不要勾任何东西(不要 README、不要 .gitignore)
+点 Create repository
+
+创建完会跳到一个页面,保留这个页面别关,等下要复制里面的命令。
+3.2 把本地代码推上去
+回到终端(确保你还在 noisemirror 文件夹里,如果不在就 cd noisemirror),依次输入下面命令(一行一行来):
+bashgit init
+bashgit add .
+bashgit commit -m "init"
+接下来这步要换成你自己的:回到刚才 GitHub 那个页面,找到类似下面这两行(把 你的用户名 换成你 GitHub 用户名):
+bashgit remote add origin https://github.com/你的用户名/noisemirror.git
+bashgit branch -M main
+bashgit push -u origin main
+第一次 push 会让你登录 GitHub,跟着提示弹窗操作就行(浏览器会弹出来登录)。
+成功后,刷新 GitHub 页面,你会看到所有代码文件都在上面了。
+3.3 用 Vercel 一键部署
+
+登录 https://vercel.com(用 GitHub 账号登)
+点 Add New → Project
+找到你的 noisemirror 仓库,点 Import
+不用改任何配置,直接拉到底,点 Deploy
+等 1-2 分钟,看到 🎉 庆祝动画就成功了
+给你一个网址,类似 noisemirror-xxx.vercel.app —— 这就是你的线上网址!
+
+把这个网址发给朋友,他们就能用了。手机也能直接打开。
+
+上线后立刻要做的两件事
+① 给高德 key 配域名白名单(防被刷)
+
+拿到 Vercel 给的域名,比如 noisemirror-xxx.vercel.app
+去 https://console.amap.com/dev/key/app
+找到你的 key → 编辑 → 白名单 那栏填:
+
+localhost,noisemirror-xxx.vercel.app
+(localhost 是为了你本地开发还能用,逗号分隔)
+② 改了代码怎么更新线上?
+在终端里:
+bashgit add .
+git commit -m "更新内容随便写"
+git push
+推上去后 Vercel 会自动重新部署,1 分钟左右就更新了,网址不变。
+
+关于"搜索不到其他小区"的问题
+我猜大概率是这两个原因之一:
+
+高德 key 没开"Web 服务"权限:去高德控制台看你这个 key,确认服务平台选了 "Web 服务"(不是"Web 端 JS API")
+你公开过的 key 被限流了:重新申请一个 key 试试
+
+跑起来 npm run dev 后,按 F12 打开浏览器开发者工具,看 Console 标签页有没有红色报错,把报错截图发我,我帮你看。
+
+一句话总结
+第二步 = 在你自己电脑上跑(本地预览)
+第三步 = 上传到 GitHub,然后 Vercel 自动给你做成网站(全世界都能访问)
+按顺序做就行,不要跳步。每一步卡住了截个图发我。
