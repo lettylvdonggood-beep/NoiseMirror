@@ -7,19 +7,40 @@ const LS_KEY_QUOTA = "noisemirror_quota";
 const LS_KEY_USED = "noisemirror_used_ids";
 const LS_KEY_SUBMITS = "noisemirror_submitted_count";
 const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
+const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts"; // 新增：记录每个小区被反馈次数
 
 const INITIAL_QUOTA = 1;
 const QUOTA_PER_REVIEW = 1;
 const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
+const PAGE_SIZE = 5; // 每页展示数量
 
 // ============ 口径 ============
-const SCORE_LEVELS = [
+// 详情页用的完整描述（保留帖子/评论相关说明）
+const SCORE_LEVELS_DETAIL = [
   { v: 1, label: "基本安静", color: "#0a8554", desc: '偶有个别帖子提及,未成共识(如"还行")' },
   { v: 2, label: "轻度", color: "#84cc16", desc: '个位数帖子/评论提及,描述笼统(如"避雷")' },
   { v: 3, label: "中度", color: "#d68910", desc: '多帖提及,有具体场景(如"晚上 10 点还能听到")' },
   { v: 4, label: "严重", color: "#ef4444", desc: '多帖一致吐槽,有生动细节(如"能听到邻居打呼")' },
   { v: 5, label: "极度", color: "#991b1b", desc: "社区共识,有人为此搬离" },
+];
+
+// 提交评价时用的简化描述（面向用户的评判标准）
+const SCORE_LEVELS_SUBMIT = [
+  { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
+  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
+  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时会受影响" },
+  { v: 4, label: "严重", color: "#ef4444", desc: "噪音明显且频繁,日常生活受干扰" },
+  { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
+];
+
+// 评分标准弹窗也用简化版
+const SCORE_LEVELS_GUIDE = [
+  { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
+  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
+  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时会受影响" },
+  { v: 4, label: "严重", color: "#ef4444", desc: "噪音明显且频繁,日常生活受干扰" },
+  { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
 ];
 
 const NOISE_LEVELS = [
@@ -94,7 +115,8 @@ const cardStyle = { background: C.card, borderRadius: 16, padding: 20, border: `
 function normalize(str) {
   return (str || "").replace(/[\s()()【】\[\]·,,。.\-—_]/g, "").toLowerCase();
 }
-function getLevel(score) { return SCORE_LEVELS.find(l => l.v === Math.round(score)) || SCORE_LEVELS[2]; }
+function getLevel(score) { return SCORE_LEVELS_DETAIL.find(l => l.v === Math.round(score)) || SCORE_LEVELS_DETAIL[2]; }
+function getLevelSubmit(score) { return SCORE_LEVELS_SUBMIT.find(l => l.v === Math.round(score)) || SCORE_LEVELS_SUBMIT[2]; }
 function getNoiseInfo(id) { return NOISE_LEVELS.find(n => n.id === id) || NOISE_LEVELS[0]; }
 
 function getOrCreateUserId() {
@@ -119,6 +141,20 @@ function addUsedId(id) {
   if (!u.includes(id)) { u.push(id); localStorage.setItem(LS_KEY_USED, JSON.stringify(u)); }
 }
 
+// 反馈次数管理
+function getReportCounts() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY_REPORT_COUNTS) || "{}"); } catch { return {}; }
+}
+function addReportCount(communityId) {
+  const counts = getReportCounts();
+  counts[communityId] = (counts[communityId] || 0) + 1;
+  localStorage.setItem(LS_KEY_REPORT_COUNTS, JSON.stringify(counts));
+}
+function getReportCount(communityId) {
+  const counts = getReportCounts();
+  return counts[communityId] || 0;
+}
+
 async function searchAmapPOI(keyword, city = "上海") {
   if (!keyword || keyword.trim().length < 2) return [];
   const url = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=${encodeURIComponent(keyword)}&city=${encodeURIComponent(city)}&types=120300&offset=15&page=1&extensions=base`;
@@ -135,6 +171,20 @@ async function searchAmapPOI(keyword, city = "上海") {
       isAmap: true,
     }));
   } catch (e) { console.error("Amap fail", e); return []; }
+}
+
+// ============ Viewport 修复 ============
+function useViewportFix() {
+  useEffect(() => {
+    // 确保 viewport meta 正确设置，防止 iOS 输入框聚焦时自动缩放
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'viewport';
+      document.head.appendChild(meta);
+    }
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  }, []);
 }
 
 // ============ UI ============
@@ -161,6 +211,9 @@ function CommunityCard({ item, onClick }) {
   const hasScore = typeof item.score === "number";
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
+  const reportCount = getReportCount(item.id);
+  // 总反馈次数 = 原始 reviews + 用户新增反馈
+  const totalReports = (item.reviews || 0) + reportCount;
 
   return (
     <div onClick={onClick} style={{ ...cardStyle, padding: 16, cursor: "pointer", marginBottom: 10 }}>
@@ -171,7 +224,7 @@ function CommunityCard({ item, onClick }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: -0.2 }}>{item.name}</h3>
-            {item.reviews ? <span style={{ fontSize: 12, color: C.textLight, flexShrink: 0 }}>{item.reviews} 条</span> : null}
+            {totalReports > 0 && <span style={{ fontSize: 12, color: C.textLight, flexShrink: 0 }}>已反馈 {totalReports} 次</span>}
           </div>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
           {hasScore && (
@@ -200,7 +253,7 @@ function SectionTitle({ children, hint, required, action }) {
   );
 }
 
-// ============ 评分标准弹窗 ============
+// ============ 评分标准弹窗（用简化版描述） ============
 function ScoreGuideModal({ onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
@@ -210,10 +263,10 @@ function ScoreGuideModal({ onClose }) {
           <span onClick={onClose} style={{ fontSize: 24, color: C.textMuted, cursor: "pointer", lineHeight: 1 }}>×</span>
         </div>
         <p style={{ margin: "0 0 18px", fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
-          评分基于小红书公开帖子和评论区反馈整理,1 分最安静,5 分最吵。
+          根据你的真实居住体验打分,1 分最安静,5 分最吵。
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {SCORE_LEVELS.map(l => (
+          {SCORE_LEVELS_GUIDE.map(l => (
             <div key={l.v} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 12, background: l.color + "08", borderRadius: 10, border: `1px solid ${l.color}25` }}>
               <div style={{ width: 36, height: 36, borderRadius: 18, background: "#fff", border: `2.5px solid ${l.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: l.color, flexShrink: 0 }}>{l.v}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -248,12 +301,68 @@ function QuotaPaywall({ onGoSubmit }) {
   );
 }
 
+// ============ 分页组件 ============
+function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+  
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxShow = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxShow / 2));
+    let end = Math.min(totalPages, start + maxShow - 1);
+    if (end - start + 1 < maxShow) {
+      start = Math.max(1, end - maxShow + 1);
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "16px 0 8px" }}>
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        style={{
+          padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`,
+          background: currentPage === 1 ? C.bg : "#fff", color: currentPage === 1 ? C.textLight : C.text,
+          fontSize: 13, cursor: currentPage === 1 ? "not-allowed" : "pointer", fontWeight: 500,
+        }}
+      >上一页</button>
+      
+      {getPageNumbers().map(p => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          style={{
+            width: 36, height: 36, borderRadius: 8, border: `1px solid ${p === currentPage ? C.text : C.border}`,
+            background: p === currentPage ? C.text : "#fff", color: p === currentPage ? "#fff" : C.text,
+            fontSize: 14, cursor: "pointer", fontWeight: p === currentPage ? 700 : 400,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >{p}</button>
+      ))}
+      
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        style={{
+          padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`,
+          background: currentPage === totalPages ? C.bg : "#fff", color: currentPage === totalPages ? C.textLight : C.text,
+          fontSize: 13, cursor: currentPage === totalPages ? "not-allowed" : "pointer", fontWeight: 500,
+        }}
+      >下一页</button>
+    </div>
+  );
+}
+
 // ============ 详情页 ============
 function CommunityDetail({ item, onBack, onGoSubmit }) {
   const hasScore = typeof item.score === "number";
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const [showGuide, setShowGuide] = useState(false);
+  const reportCount = getReportCount(item.id);
+  const totalReports = (item.reviews || 0) + reportCount;
 
   return (
     <div style={{ paddingBottom: 60 }}>
@@ -267,7 +376,7 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>{item.name}</h2>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
-            {item.source && <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textLight }}>{item.source}</p>}
+            {totalReports > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textLight }}>已被反馈 {totalReports} 次</p>}
           </div>
         </div>
       </div>
@@ -370,6 +479,8 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
     localStorage.setItem(LS_KEY_PRIVATE_QUEUE, JSON.stringify(queue));
     const count = parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10) + 1;
     localStorage.setItem(LS_KEY_SUBMITS, String(count));
+    // 增加该小区的反馈计数
+    addReportCount(community.id);
     const earned = willEarn;
     setQuota(getQuota() + earned);
     setEarnedQuota(earned);
@@ -384,7 +495,7 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
 
   if (submitted) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 460, gap: 16, textAlign: "center", padding: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px 40px", gap: 16, textAlign: "center" }}>
         <div style={{ width: 64, height: 64, borderRadius: 32, background: "#0a8554", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 32 }}>✓</div>
         <h3 style={{ color: C.text, fontSize: 20, margin: 0, fontWeight: 700 }}>提交成功</h3>
         <div style={{ padding: "14px 24px", background: "#fff", border: `2px solid #0a8554`, borderRadius: 12 }}>
@@ -399,7 +510,7 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
     );
   }
 
-  const currentLevel = getLevel(score);
+  const currentLevel = getLevelSubmit(score);
 
   return (
     <div style={{ paddingBottom: 100 }}>
@@ -410,7 +521,7 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
             onChange={(e) => { setSearch(e.target.value); setCommunity(null); setShowSearch(true); }}
             onFocus={() => setShowSearch(true)}
             placeholder="输入小区名称..."
-            style={{ width: "100%", padding: "14px 16px", borderRadius: 10, border: `1px solid ${community ? "#0a8554" : C.borderDark}`, background: "#fff", color: C.text, fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: FONT }} />
+            style={{ width: "100%", padding: "14px 16px", borderRadius: 10, border: `1px solid ${community ? "#0a8554" : C.borderDark}`, background: "#fff", color: C.text, fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: FONT }} />
           {showSearch && search.trim() && !community && (
             <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 10, background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", maxHeight: 320, overflowY: "auto" }}>
               {searching && <div style={{ padding: "14px 16px", fontSize: 13, color: C.textLight, textAlign: "center" }}>搜索中...</div>}
@@ -470,7 +581,7 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
         </div>
       </div>
 
-      {/* 补充描述 - 新文案:强调私下名单 */}
+      {/* 补充描述 */}
       <div style={{ ...cardStyle, border: `2px solid ${trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.bannerBorder}`, background: trimmedComment.length >= DESC_MIN_LEN ? "#f0fdf4" : C.bannerBg }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -483,7 +594,7 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
           <div style={{ padding: "4px 10px", background: "#fff", border: `1px solid ${C.borderDark}`, borderRadius: 999, fontSize: 11, color: C.text, fontWeight: 600, whiteSpace: "nowrap", marginLeft: 8 }}>+{willEarn} 次</div>
         </div>
         <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder={`例:楼板太薄,能听到楼上小孩跑跳声。填 ${DESC_MIN_LEN} 字以上额外再 +1 次查询`} rows={4}
-          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
+          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
           <span>{trimmedComment.length} / {DESC_MIN_LEN}</span>
@@ -493,7 +604,6 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
       <button onClick={handleSubmit} disabled={!canSubmit} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: canSubmit ? C.text : C.borderDark, color: "#fff", fontSize: 16, fontWeight: 600, cursor: canSubmit ? "pointer" : "not-allowed", marginTop: 8 }}>
         提交评价
       </button>
-
 
       {showGuide && <ScoreGuideModal onClose={() => setShowGuide(false)} />}
     </div>
@@ -506,6 +616,7 @@ function HomeSearch({ onPick, currentSeedData, quota }) {
   const [district, setDistrict] = useState("全部");
   const [amapResults, setAmapResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const debounceRef = useRef(null);
 
   useEffect(() => {
@@ -520,6 +631,9 @@ function HomeSearch({ onPick, currentSeedData, quota }) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
+  // 切换区时重置页码
+  useEffect(() => { setCurrentPage(1); }, [district, query]);
+
   let displayList;
   if (query.trim()) {
     const q = normalize(query);
@@ -533,6 +647,10 @@ function HomeSearch({ onPick, currentSeedData, quota }) {
       .sort((a, b) => b.score - a.score);
   }
 
+  const totalPages = Math.max(1, Math.ceil(displayList.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedList = query.trim() ? displayList : displayList.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <div style={{ paddingBottom: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "0 4px" }}>
@@ -542,8 +660,7 @@ function HomeSearch({ onPick, currentSeedData, quota }) {
 
       <div style={{ marginBottom: 14 }}>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 搜索任意上海小区..."
-          style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: FONT, background: "#fff" }} />
-        
+          style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: FONT, background: "#fff", color: C.text }} />
       </div>
 
       {!query.trim() && (
@@ -559,16 +676,27 @@ function HomeSearch({ onPick, currentSeedData, quota }) {
               }}>{d}</div>
             ))}
           </div>
-          <div style={{ padding: "0 4px 10px", fontSize: 13, color: C.textMuted }}>已收录 · {displayList.length} 个小区(按噪音严重程度排序)</div>
+          <div style={{ padding: "0 4px 10px", fontSize: 13, color: C.textMuted }}>
+            已收录 · {displayList.length} 个小区(按噪音严重程度排序)· 第 {safePage}/{totalPages} 页
+          </div>
         </>
       )}
 
       {query.trim() && searching && <div style={{ textAlign: "center", padding: 30, color: C.textLight, fontSize: 13 }}>搜索中...</div>}
 
-      {displayList.length === 0 && !searching ? (
+      {pagedList.length === 0 && !searching ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: C.textLight, fontSize: 14 }}>没有找到小区</div>
       ) : (
-        displayList.map(item => <CommunityCard key={item.id} item={item} onClick={() => onPick(item)} />)
+        pagedList.map(item => <CommunityCard key={item.id} item={item} onClick={() => onPick(item)} />)
+      )}
+
+      {/* 分页 - 仅非搜索模式下显示 */}
+      {!query.trim() && (
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={(p) => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        />
       )}
     </div>
   );
@@ -615,6 +743,8 @@ function ProfilePanel({ onClose, quota, submitCount, onResetData }) {
 
 // ============ 主 App ============
 export default function App() {
+  useViewportFix(); // 修复 viewport 适配
+
   const [tab, setTab] = useState("home");
   const [picked, setPicked] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -655,7 +785,7 @@ export default function App() {
 
   const onResetData = () => {
     if (!window.confirm("确定清除本地数据?这会重置查询次数和提交记录。")) return;
-    [LS_KEY_USER, LS_KEY_QUOTA, LS_KEY_USED, LS_KEY_SUBMITS, LS_KEY_PRIVATE_QUEUE].forEach(k => localStorage.removeItem(k));
+    [LS_KEY_USER, LS_KEY_QUOTA, LS_KEY_USED, LS_KEY_SUBMITS, LS_KEY_PRIVATE_QUEUE, LS_KEY_REPORT_COUNTS].forEach(k => localStorage.removeItem(k));
     setSubmitCount(0);
     setQuotaState(getQuota());
     setShowProfile(false);
