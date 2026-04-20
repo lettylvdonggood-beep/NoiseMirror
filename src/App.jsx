@@ -608,14 +608,14 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
       <div style={{ ...cardStyle, border: `2px solid ${trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.bannerBorder}`, background: trimmedComment.length >= DESC_MIN_LEN ? "#f0fdf4" : C.bannerBg }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>补充描述</h4>
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>补充描述 <span style={{ fontSize: 12, fontWeight: 400, color: C.textLight }}>选填</span></h4>
           </div>
           <div style={{ padding: "4px 10px", background: "#fff", border: `1px solid ${C.borderDark}`, borderRadius: 999, fontSize: 11, color: C.text, fontWeight: 600, whiteSpace: "nowrap", marginLeft: 8 }}>+{willEarn} 次</div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          📝 内容不会公开展示,仅用于完善数据。
+          写 {DESC_MIN_LEN} 字以上额外 +1 次查询,你的描述会帮到其他找房人
         </p>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="例:楼板太薄,能听到楼上小孩跑跳声" rows={4}
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="什么时间段最吵?哪个方向的房子受影响大?住了多久?" rows={4}
           style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
@@ -899,6 +899,9 @@ export default function App() {
       {/* 测试版提示 */}
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
         🧪 测试版 · 当前仅开放上海 · 噪敏找房人的互助平台
+      </div>
+      <div style={{ padding: "4px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, fontSize: 10, color: C.textLight, textAlign: "center", lineHeight: 1.4 }}>
+        评分数据来源于用户主观反馈,仅供参考,不构成任何决策建议
       </div>
 
       {/* 内容区:底部留 76px 给 Tab 栏 */}
