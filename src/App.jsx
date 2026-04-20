@@ -788,11 +788,23 @@ export default function App() {
   const [seedData, setSeedData] = useState(SEED_DATA);
   const [showQuotaAlert, setShowQuotaAlert] = useState(false);
 
-  const loadAndMergeData = () => {
-    Promise.all([
-      loadExcelData("/data.xlsx").then(rows => (rows && rows.length > 0) ? rows : FALLBACK_DATA),
-      fetch(`${API_BASE}/api/stats`).then(r => r.json()).then(d => d.data || []).catch(() => []),
-    ]).then(([excelRows, apiStats]) => {
+  const loadAndMergeData = async () => {
+    // 第一步：先加载 Excel 并立即显示，保证 42 个小区一定出来
+    let excelRows = FALLBACK_DATA;
+    try {
+      const rows = await loadExcelData("/data.xlsx");
+      if (rows && rows.length > 0) excelRows = rows;
+    } catch (e) { /* 用兜底 */ }
+    SEED_DATA = excelRows;
+    setSeedData([...excelRows]);
+
+    // 第二步：拉 API 做增量合并，失败不影响已显示的数据
+    try {
+      const r = await fetch(`${API_BASE}/api/stats`);
+      const d = await r.json();
+      const apiStats = d.data || [];
+      if (apiStats.length === 0) return;
+
       const apiMap = {};
       apiStats.forEach(s => {
         const key = normalize(s.community_name) + "_" + normalize(s.district);
@@ -827,7 +839,9 @@ export default function App() {
 
       SEED_DATA = merged;
       setSeedData(merged);
-    });
+    } catch (e) {
+      console.warn("API 数据加载失败,继续使用 Excel 数据", e);
+    }
   };
 
   useEffect(() => {
