@@ -15,7 +15,7 @@ const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
 const PAGE_SIZE = 5; 
 
-// ============ 口径 ============
+// ============ 口径与数据 ============
 const SCORE_LEVELS_DETAIL = [
   { v: 1, label: "基本安静", color: "#0a8554", desc: '偶有个别帖子提及,未成共识(如"还行")' },
   { v: 2, label: "轻度", color: "#84cc16", desc: '个位数帖子/评论提及,描述笼统(如"避雷")' },
@@ -32,14 +32,6 @@ const SCORE_LEVELS_SUBMIT = [
   { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
 ];
 
-const SCORE_LEVELS_GUIDE = [
-  { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
-  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时会受影响" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "噪音明显且频繁,日常生活受干扰" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
-];
-
 const NOISE_LEVELS = [
   { id: "neighbor", label: "隔音/邻居", icon: "🏠", desc: "隔音差 / 邻居吵闹" },
   { id: "traffic", label: "交通/商业", icon: "🚗", desc: "高架 / 地铁 / 底商" },
@@ -47,58 +39,12 @@ const NOISE_LEVELS = [
 
 const DISTRICTS = ["全部", "浦东新区", "普陀区", "虹口区", "闵行区", "长宁区", "徐汇区", "黄浦区", "静安区", "杨浦区", "宝山区", "嘉定区", "松江区", "青浦区", "奉贤区", "金山区", "崇明区"];
 
-// ============ 兜底数据 ============
 const FALLBACK_DATA = [
   { id: "seed_1", name: "中远两湾城", district: "普陀区", address: "远景路97弄", score: 5, noiseLevel: "traffic", reviews: 12, source: "示例数据" },
   { id: "seed_2", name: "上海康城", district: "闵行区", address: "莘松路", score: 4, noiseLevel: "neighbor", reviews: 15, source: "示例数据" },
 ];
 
-let SEED_DATA = [...FALLBACK_DATA];
-
-function parseExcelRow(row, idx) {
-  const safeNum = (v, def = 3) => {
-    const n = parseInt(v);
-    return isNaN(n) ? def : Math.max(1, Math.min(5, n));
-  };
-  const validLevels = NOISE_LEVELS.map(n => n.id);
-  const level = (row.noise_level || "neighbor").toString().trim().toLowerCase();
-  return {
-    id: "xls_" + idx,
-    name: (row.name || "").toString().trim(),
-    district: (row.district || "").toString().trim(),
-    address: (row.address || "").toString().trim(),
-    score: safeNum(row.score),
-    noiseLevel: validLevels.includes(level) ? level : "neighbor",
-    reviews: parseInt(row.review_count) || 0,
-    source: (row.source_note || "").toString() || (parseInt(row.review_count) ? `${parseInt(row.review_count)}条用户整理` : "小红书用户整理"),
-  };
-}
-
-async function loadExcelData(url) {
-  try {
-    if (!window.XLSX) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("not found");
-    const buf = await res.arrayBuffer();
-    const wb = window.XLSX.read(buf, { type: "array" });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = window.XLSX.utils.sheet_to_json(sheet);
-    return rows.map(parseExcelRow).filter(r => r.name);
-  } catch (e) {
-    console.warn("Excel 加载失败,使用兜底数据", e);
-    return null;
-  }
-}
-
-// ============ 样式 ============
+// ============ 样式变量 ============
 const C = {
   bg: "#f7f7f7", card: "#ffffff", text: "#222222", textMuted: "#717171",
   textLight: "#b0b0b0", border: "#ebebeb", borderDark: "#dddddd",
@@ -108,20 +54,14 @@ const C = {
 const FONT = `-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif`;
 const cardStyle = { background: C.card, borderRadius: 16, padding: 20, border: `1px solid ${C.border}`, marginBottom: 14 };
 
-// ============ 工具 ============
-function normalize(str) {
-  return (str || "").replace(/[\s()()【】\[\]·,,。.\-—_]/g, "").toLowerCase();
-}
+// ============ 工具函数 ============
+function normalize(str) { return (str || "").replace(/[\s()()【】\[\]·,,。.\-—_]/g, "").toLowerCase(); }
 function getLevel(score) { return SCORE_LEVELS_DETAIL.find(l => l.v === Math.round(score)) || SCORE_LEVELS_DETAIL[2]; }
 function getLevelSubmit(score) { return SCORE_LEVELS_SUBMIT.find(l => l.v === Math.round(score)) || SCORE_LEVELS_SUBMIT[2]; }
 function getNoiseInfo(id) { return NOISE_LEVELS.find(n => n.id === id) || NOISE_LEVELS[0]; }
-
 function getOrCreateUserId() {
   let id = localStorage.getItem(LS_KEY_USER);
-  if (!id) {
-    id = "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem(LS_KEY_USER, id);
-  }
+  if (!id) { id = "u_" + Date.now().toString(36); localStorage.setItem(LS_KEY_USER, id); }
   return id;
 }
 function getQuota() {
@@ -130,399 +70,292 @@ function getQuota() {
   return parseInt(v, 10) || 0;
 }
 function setQuota(n) { localStorage.setItem(LS_KEY_QUOTA, String(n)); }
-function getUsedIds() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY_USED) || "[]"); } catch { return []; }
-}
-function addUsedId(id) {
-  const u = getUsedIds();
-  if (!u.includes(id)) { u.push(id); localStorage.setItem(LS_KEY_USED, JSON.stringify(u)); }
+function getReportCount(id) {
+  try { const counts = JSON.parse(localStorage.getItem(LS_KEY_REPORT_COUNTS) || "{}"); return counts[id] || 0; } catch { return 0; }
 }
 
-function getReportCounts() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY_REPORT_COUNTS) || "{}"); } catch { return {}; }
-}
-function addReportCount(communityId) {
-  const counts = getReportCounts();
-  counts[communityId] = (counts[communityId] || 0) + 1;
-  localStorage.setItem(LS_KEY_REPORT_COUNTS, JSON.stringify(counts));
-}
-function getReportCount(communityId) {
-  const counts = getReportCounts();
-  return counts[communityId] || 0;
-}
-
-async function searchAmapPOI(keyword, city = "上海") {
-  if (!keyword || keyword.trim().length < 2) return [];
-  const url = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=${encodeURIComponent(keyword)}&city=${encodeURIComponent(city)}&types=120300&offset=15&page=1&extensions=base`;
+async function searchAmapPOI(keyword) {
+  if (!keyword || keyword.length < 2) return [];
+  const url = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=${encodeURIComponent(keyword)}&city=上海&types=120300&offset=15&page=1`;
   try {
     const res = await fetch(url);
     const data = await res.json();
-    if (data.status !== "1") return [];
     return (data.pois || []).map(p => ({
-      id: "amap_" + p.id,
-      name: p.name,
-      district: (p.adname || "").replace("市", ""),
-      address: p.address || (p.pname || "") + (p.cityname || ""),
-      location: p.location,
-      isAmap: true,
+      id: "amap_" + p.id, name: p.name, district: (p.adname || "").replace("市", ""),
+      address: p.address || p.adname, isAmap: true, location: p.location
     }));
-  } catch (e) { console.error("Amap fail", e); return []; }
+  } catch { return []; }
 }
 
-// ============ Viewport 修复 ============
 function useViewportFix() {
   useEffect(() => {
     let meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'viewport';
-      document.head.appendChild(meta);
-    }
+    if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }
     meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
 }
 
-// ============ UI ============
+// ============ 子组件 ============
 function ScoreBadge({ score, size = "normal" }) {
   const dim = size === "large" ? 72 : 44;
-  const fs = size === "large" ? 26 : 16;
   const level = getLevel(score);
   return (
-    <div style={{ width: dim, height: dim, borderRadius: dim / 2, background: "#fff", border: `2.5px solid ${level.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: fs, color: level.color, flexShrink: 0 }}>
+    <div style={{ width: dim, height: dim, borderRadius: dim / 2, background: "#fff", border: `2.5px solid ${level.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size === "large" ? 26 : 16, color: level.color, flexShrink: 0 }}>
       {score}
-    </div>
-  );
-}
-
-function QuotaBadge({ quota }) {
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: quota > 0 ? "#fff" : C.quotaBg, border: `1px solid ${quota > 0 ? C.borderDark : C.quotaBorder}`, fontSize: 12, color: quota > 0 ? C.text : "#c92a2a", fontWeight: 600 }}>
-      🎫 剩余 {quota} 次查询
-    </div>
-  );
-}
-
-function CommunityCard({ item, onClick }) {
-  const hasScore = typeof item.score === "number";
-  const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
-  const level = hasScore ? getLevel(item.score) : null;
-  const reportCount = getReportCount(item.id);
-  const totalReports = (item.reviews || 0) + reportCount;
-
-  return (
-    <div onClick={onClick} style={{ ...cardStyle, padding: 16, cursor: "pointer", marginBottom: 10 }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-        {hasScore ? <ScoreBadge score={item.score} /> : (
-          <div style={{ width: 44, height: 44, borderRadius: 22, background: C.bg, border: `2px dashed ${C.borderDark}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: C.textLight, flexShrink: 0, textAlign: "center", lineHeight: 1.2 }}>暂无<br />评分</div>
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: -0.2 }}>{item.name}</h3>
-            {totalReports > 0 && <span style={{ fontSize: 12, color: C.textLight, flexShrink: 0 }}>已反馈 {totalReports} 次</span>}
-          </div>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
-          {hasScore && (
-            <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 999, background: level.color + "15", color: level.color, fontWeight: 600 }}>{level.label}</span>
-              {noise && <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 999, background: "#f0f0f0", color: C.text, fontWeight: 500 }}>{noise.icon} {noise.label}</span>}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SectionTitle({ children, hint, required, action }) {
-  return (
-    <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>
-          {children} {required && <span style={{ color: C.accent }}>*</span>}
-        </h4>
-        {hint && <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textLight }}>{hint}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function ScoreGuideModal({ onClose }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 24px 36px", width: "100%", maxWidth: 430, maxHeight: "80vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>评分标准说明</h3>
-          <span onClick={onClose} style={{ fontSize: 24, color: C.textMuted, cursor: "pointer", lineHeight: 1 }}>×</span>
-        </div>
-        <p style={{ margin: "0 0 18px", fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
-          根据你的真实居住体验打分,1 分最安静,5 分最吵。
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {SCORE_LEVELS_GUIDE.map(l => (
-            <div key={l.v} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 12, background: l.color + "08", borderRadius: 10, border: `1px solid ${l.color}25` }}>
-              <div style={{ width: 36, height: 36, borderRadius: 18, background: "#fff", border: `2.5px solid ${l.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: l.color, flexShrink: 0 }}>{l.v}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: l.color }}>{l.label}</div>
-                <div style={{ fontSize: 12, color: C.text, marginTop: 3, lineHeight: 1.5 }}>{l.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoButton({ onClick }) {
-  return (
-    <span onClick={onClick} style={{ width: 22, height: 22, borderRadius: 11, background: C.bg, border: `1px solid ${C.borderDark}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.textMuted, cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>?</span>
-  );
-}
-
-function QuotaPaywall({ onGoSubmit }) {
-  return (
-    <div style={{ ...cardStyle, textAlign: "center", padding: "40px 24px", background: C.quotaBg, border: `1px solid ${C.quotaBorder}` }}>
-      <div style={{ fontSize: 36, marginBottom: 10 }}>🎫</div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: C.text }}>查询次数已用完</h3>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
-        贡献一条小区评价 <strong>+1 次</strong><br />
-        填写 {DESC_MIN_LEN} 字以上补充描述 <strong>额外再 +1 次</strong>
-      </p>
-      <button onClick={onGoSubmit} style={{ padding: "12px 32px", borderRadius: 10, border: "none", background: C.text, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>去贡献评价</button>
     </div>
   );
 }
 
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
-  
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxShow = 5;
-    let start = Math.max(1, currentPage - Math.floor(maxShow / 2));
-    let end = Math.min(totalPages, start + maxShow - 1);
-    if (end - start + 1 < maxShow) {
-      start = Math.max(1, end - maxShow + 1);
-    }
-    for (let i = start; i <= end; i++) pages.push(i);
-    return pages;
-  };
-
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "16px 0 8px" }}>
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        style={{
-          padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`,
-          background: currentPage === 1 ? C.bg : "#fff", color: currentPage === 1 ? C.textLight : C.text,
-          fontSize: 13, cursor: currentPage === 1 ? "not-allowed" : "pointer", fontWeight: 500,
-        }}
-      >上一页</button>
-      
-      {getPageNumbers().map(p => (
-        <button
-          key={p}
-          onClick={() => onPageChange(p)}
-          style={{
-            width: 36, height: 36, borderRadius: 8, border: `1px solid ${p === currentPage ? C.text : C.border}`,
-            background: p === currentPage ? C.text : "#fff", color: p === currentPage ? "#fff" : C.text,
-            fontSize: 14, cursor: "pointer", fontWeight: p === currentPage ? 700 : 400,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >{p}</button>
-      ))}
-      
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        style={{
-          padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`,
-          background: currentPage === totalPages ? C.bg : "#fff", color: currentPage === totalPages ? C.textLight : C.text,
-          fontSize: 13, cursor: currentPage === totalPages ? "not-allowed" : "pointer", fontWeight: 500,
-        }}
-      >下一页</button>
+    <div style={{ display: "flex", justifyContent: "center", gap: 8, padding: "20px 0" }}>
+      <button disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff" }}>上一页</button>
+      <span style={{ alignSelf: "center", fontSize: 14 }}>{currentPage} / {totalPages}</span>
+      <button disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff" }}>下一页</button>
     </div>
   );
 }
 
-// ============ 详情页 ============
-function CommunityDetail({ item, onBack, onGoSubmit }) {
-  useViewportFix(); // 修复自适应
-  const hasScore = typeof item.score === "number";
-  const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
-  const level = hasScore ? getLevel(item.score) : null;
-  const [showGuide, setShowGuide] = useState(false);
-  const reportCount = getReportCount(item.id);
-  const totalReports = (item.reviews || 0) + reportCount;
+function ScoreGuideModal({ onClose }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: "100%", maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0 }}>评分说明</h3>
+        {SCORE_LEVELS_GUIDE_DATA.map(l => (
+          <div key={l.v} style={{ marginBottom: 12, display: "flex", gap: 10 }}>
+            <div style={{ color: l.color, fontWeight: "bold" }}>{l.v}分</div>
+            <div style={{ fontSize: 13 }}><strong>{l.label}</strong>: {l.desc}</div>
+          </div>
+        ))}
+        <button onClick={onClose} style={{ width: "100%", padding: 12, borderRadius: 10, background: C.text, color: "#fff", border: "none" }}>知道了</button>
+      </div>
+    </div>
+  );
+}
+const SCORE_LEVELS_GUIDE_DATA = SCORE_LEVELS_SUBMIT;
+
+// ============ 主页面组件 ============
+
+function HomeSearch({ onPick, currentSeedData, quota, onGoSubmit }) {
+  useViewportFix();
+  const [query, setQuery] = useState("");
+  const [district, setDistrict] = useState("全部");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filtered = currentSeedData.filter(item => {
+    const matchDistrict = district === "全部" || item.district === district;
+    const matchQuery = !query || normalize(item.name).includes(normalize(query)) || normalize(item.address).includes(normalize(query));
+    return matchDistrict && matchQuery;
+  });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pagedItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div style={{ paddingBottom: 60 }}>
-      <div onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "12px 0 16px", cursor: "pointer", color: C.text, fontSize: 14, fontWeight: 500 }}>← 返回</div>
+    <div style={{ paddingBottom: 80 }}>
+      <header style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: "0 0 8px", letterSpacing: -1 }}>噪音魔镜 🔕</h1>
+        <p style={{ color: C.textMuted, margin: 0, fontSize: 15 }}>上海小区隔音/噪音口碑查询</p>
+      </header>
 
-      <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          {hasScore ? <ScoreBadge score={item.score} size="large" /> : (
-            <div style={{ width: 72, height: 72, borderRadius: 36, background: C.bg, border: `2px dashed ${C.borderDark}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.textLight, flexShrink: 0 }}>暂无评分</div>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>{item.name}</h2>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
-            {totalReports > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textLight }}>已被反馈 {totalReports} 次</p>}
-          </div>
-        </div>
+      <div style={{ ...cardStyle, padding: 12, display: "flex", gap: 8, flexDirection: "column" }}>
+        <input 
+          placeholder="搜索小区名称或地址..." 
+          value={query} 
+          onChange={e => { setQuery(e.target.value); setCurrentPage(1); }}
+          style={{ width: "100%", padding: "14px", borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, boxSizing: "border-box", outline: "none" }}
+        />
+        <select 
+          value={district} 
+          onChange={e => { setDistrict(e.target.value); setCurrentPage(1); }}
+          style={{ width: "100%", padding: "12px", borderRadius: 10, border: `1px solid ${C.borderDark}`, background: "#fff", fontSize: 14 }}
+        >
+          {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
       </div>
 
-      {hasScore ? (
-        <>
-          <div style={cardStyle}>
-            <SectionTitle action={<InfoButton onClick={() => setShowGuide(true)} />}>噪音等级</SectionTitle>
-            <div style={{ padding: 14, borderRadius: 12, background: level.color + "10", border: `1px solid ${level.color}30` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: level.color }}>{item.score}</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: level.color }}>{level.label}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: C.text, lineHeight: 1.5 }}>{level.desc}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: C.textLight }}>共 {filtered.length} 个结果</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: quota > 0 ? C.text : C.accent }}>🎫 剩余 {quota} 次查询</div>
+      </div>
+
+      {pagedItems.map(item => (
+        <div key={item.id} onClick={() => onPick(item)} style={{ ...cardStyle, cursor: "pointer" }}>
+          <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
+            <ScoreBadge score={item.score} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 17 }}>{item.name}</div>
+              <div style={{ fontSize: 13, color: C.textMuted, marginTop: 2 }}>{item.district} · {item.address}</div>
             </div>
           </div>
+        </div>
+      ))}
 
-          {noise && (
-            <div style={cardStyle}>
-              <SectionTitle>主要噪音来源</SectionTitle>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 12, background: C.bg }}>
-                <div style={{ fontSize: 32 }}>{noise.icon}</div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{noise.label}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{noise.desc}</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div style={{ ...cardStyle, textAlign: "center", padding: "40px 20px" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🤫</div>
-          <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: C.text }}>这个小区还没有人评价过</p>
-          <p style={{ margin: "0 0 18px", fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>成为第一个分享体验的人吧</p>
-          <button onClick={onGoSubmit} style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: C.text, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>提交第一条评价</button>
+      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      
+      {quota === 0 && (
+        <div style={{ ...cardStyle, background: C.quotaBg, textAlign: "center", border: `1px solid ${C.quotaBorder}` }}>
+          <p style={{ fontWeight: 700 }}>查询次数已用完</p>
+          <button onClick={onGoSubmit} style={{ background: C.text, color: "#fff", border: "none", padding: "10px 20px", borderRadius: 8 }}>贡献评价获取次数</button>
         </div>
       )}
-
-      <div style={{ ...cardStyle, background: C.bannerBg, border: `1px solid ${C.bannerBorder}`, textAlign: "center" }}>
-        <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: C.text }}>🏠 你也住在这里?</p>
-        <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>分享你的真实噪音体验,可获得 1–2 次额外查询机会</p>
-        <button onClick={onGoSubmit} style={{ padding: "10px 24px", borderRadius: 10, border: `1px solid ${C.text}`, background: "#fff", color: C.text, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>分享我的体验</button>
-      </div>
-
-      {showGuide && <ScoreGuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }
 
-// ============ 提交表单 ============
+function CommunityDetail({ item, onBack, onGoSubmit }) {
+  const level = getLevel(item.score);
+  const noise = getNoiseInfo(item.noiseLevel);
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", padding: "10px 0", color: C.textMuted, fontSize: 15, cursor: "pointer" }}>← 返回搜索</button>
+      <div style={cardStyle}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <ScoreBadge score={item.score} size="large" />
+          <div>
+            <h2 style={{ margin: 0 }}>{item.name}</h2>
+            <p style={{ margin: "5px 0", color: C.textMuted }}>{item.district} · {item.address}</p>
+          </div>
+        </div>
+      </div>
+      <div style={{ ...cardStyle, borderLeft: `6px solid ${level.color}` }}>
+        <h4 style={{ margin: "0 0 10px", color: level.color }}>{level.label}</h4>
+        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6 }}>{level.desc}</p>
+      </div>
+      <div style={cardStyle}>
+        <h4>主要噪音源</h4>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 30 }}>{noise.icon}</span>
+          <div>
+            <div style={{ fontWeight: "bold" }}>{noise.label}</div>
+            <div style={{ fontSize: 13, color: C.textMuted }}>{noise.desc}</div>
+          </div>
+        </div>
+      </div>
+      <button onClick={onGoSubmit} style={{ width: "100%", padding: 15, borderRadius: 12, background: C.text, color: "#fff", border: "none", fontWeight: "bold" }}>我也住这，我要反馈</button>
+    </div>
+  );
+}
+
 function SubmitForm({ onSubmitted, currentSeedData }) {
-  useViewportFix(); // 修复自适应
   const [search, setSearch] = useState("");
   const [community, setCommunity] = useState(null);
-  const [showSearch, setShowSearch] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [noiseLevel, setNoiseLevel] = useState("");
+  const [noiseLevel, setNoiseLevel] = useState("neighbor");
   const [score, setScore] = useState(3);
   const [comment, setComment] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [earnedQuota, setEarnedQuota] = useState(0);
-  const [showGuide, setShowGuide] = useState(false);
-  const debounceRef = useRef(null);
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!search.trim() || community) { setSuggestions([]); return; }
-    setSearching(true);
-    debounceRef.current = setTimeout(async () => {
-      const seedHits = currentSeedData.filter(s =>
-        normalize(s.name).includes(normalize(search)) ||
-        normalize(s.address).includes(normalize(search))
-      ).slice(0, 3);
-      const amapHits = await searchAmapPOI(search);
-      const seen = new Set(seedHits.map(s => normalize(s.name)));
-      const merged = [...seedHits, ...amapHits.filter(a => !seen.has(normalize(a.name)))];
-      setSuggestions(merged.slice(0, 8));
-      setSearching(false);
-    }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, community, currentSeedData]);
-
-  const canSubmit = community && noiseLevel;
-  const trimmedComment = comment.trim();
-  const willEarn = trimmedComment.length >= DESC_MIN_LEN ? QUOTA_PER_REVIEW_WITH_DESC : QUOTA_PER_REVIEW;
-
-  const pick = (item) => { setCommunity(item); setSearch(item.name); setShowSearch(false); };
+  const handleSearch = async (val) => {
+    setSearch(val);
+    if (val.length < 2) { setSuggestions([]); return; }
+    const localHits = currentSeedData.filter(s => s.name.includes(val)).slice(0, 5);
+    const amapHits = await searchAmapPOI(val);
+    setSuggestions([...localHits, ...amapHits]);
+  };
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    const userId = getOrCreateUserId();
-    const submission = {
-      userId, timestamp: Date.now(),
-      community: { id: community.id, name: community.name, district: community.district, address: community.address, location: community.location || null },
-      noiseLevel, score, comment: trimmedComment,
-    };
-    const queue = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
-    queue.push(submission);
-    localStorage.setItem(LS_KEY_PRIVATE_QUEUE, JSON.stringify(queue));
-    const count = parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10) + 1;
-    localStorage.setItem(LS_KEY_SUBMITS, String(count));
-    addReportCount(community.id);
-    const earned = willEarn;
+    if (!community) return alert("请先选择小区");
+    const earned = comment.length >= DESC_MIN_LEN ? QUOTA_PER_REVIEW_WITH_DESC : QUOTA_PER_REVIEW;
     setQuota(getQuota() + earned);
-    setEarnedQuota(earned);
-    setSubmitted(true);
     onSubmitted();
   };
 
-  const reset = () => {
-    setSubmitted(false); setCommunity(null); setSearch("");
-    setNoiseLevel(""); setScore(3); setComment(""); setEarnedQuota(0);
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      <h3>贡献真实评价</h3>
+      <div style={cardStyle}>
+        <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: "bold" }}>小区名称</label>
+        <input 
+          placeholder="搜索并选择小区..." 
+          value={search} 
+          onChange={e => handleSearch(e.target.value)}
+          style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${C.borderDark}`, boxSizing: "border-box" }}
+        />
+        {suggestions.length > 0 && !community && (
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 4, maxHeight: 200, overflowY: "auto" }}>
+            {suggestions.map(s => (
+              <div key={s.id} onClick={() => { setCommunity(s); setSearch(s.name); setSuggestions([]); }} style={{ padding: 12, borderBottom: `1px solid ${C.border}`, fontSize: 14 }}>
+                {s.name} <span style={{ color: "#999", fontSize: 12 }}>{s.district}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {community && (
+        <>
+          <div style={cardStyle}>
+            <label style={{ display: "block", marginBottom: 12, fontSize: 14, fontWeight: "bold" }}>噪音评分 ({score}分 - {getLevelSubmit(score).label})</label>
+            <input type="range" min="1" max="5" value={score} onChange={e => setScore(parseInt(e.target.value))} style={{ width: "100%" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#999", marginTop: 5 }}>
+              <span>最安静</span><span>极度吵闹</span>
+            </div>
+          </div>
+          <div style={cardStyle}>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: "bold" }}>主要噪音来源</label>
+            <div style={{ display: "flex", gap: 10 }}>
+              {NOISE_LEVELS.map(n => (
+                <button key={n.id} onClick={() => setNoiseLevel(n.id)} style={{ flex: 1, padding: 10, borderRadius: 8, border: `2px solid ${noiseLevel === n.id ? C.text : C.border}`, background: "#fff" }}>
+                  {n.icon} {n.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={cardStyle}>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: "bold" }}>详细描述 (选填)</label>
+            <textarea 
+              placeholder="写下你的真实感受...满10字可额外获得1次查询机会" 
+              value={comment} 
+              onChange={e => setComment(e.target.value)}
+              style={{ width: "100%", height: 80, padding: 12, borderRadius: 8, border: `1px solid ${C.borderDark}`, boxSizing: "border-box", fontSize: 14 }}
+            />
+          </div>
+          <button onClick={handleSubmit} style={{ width: "100%", padding: 15, borderRadius: 12, background: "#0a8554", color: "#fff", border: "none", fontWeight: "bold", fontSize: 16 }}>提交评价并获取次数</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============ App 主入口 ============
+export default function App() {
+  const [view, setView] = useState("home"); // home, detail, submit
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [quota, setQuotaState] = useState(getQuota());
+  const [data, setData] = useState(FALLBACK_DATA);
+
+  const handlePick = (item) => {
+    if (quota <= 0) {
+      setView("submit");
+      alert("查询次数已用完，请先贡献一条评价");
+      return;
+    }
+    // 扣除次数
+    const newQuota = quota - 1;
+    setQuota(newQuota);
+    setQuotaState(newQuota);
+    setSelectedItem(item);
+    setView("detail");
+    window.scrollTo(0, 0);
   };
 
-  if (submitted) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px 40px", gap: 16, textAlign: "center", width: "100%", boxSizing: "border-box" }}>
-        <div style={{ width: 64, height: 64, borderRadius: 32, background: "#0a8554", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 32 }}>✓</div>
-        <h3 style={{ color: C.text, fontSize: 20, margin: 0, fontWeight: 700 }}>提交成功</h3>
-        <div style={{ padding: "14px 24px", background: "#fff", border: `2px solid #0a8554`, borderRadius: 12, width: "100%", maxWidth: 300, boxSizing: "border-box" }}>
-          <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>已为你发放</p>
-          <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "#0a8554" }}>+{earnedQuota} 次查询机会</p>
-        </div>
-        <p style={{ color: C.textMuted, fontSize: 13, maxWidth: 280, lineHeight: 1.6 }}>
-          {earnedQuota === QUOTA_PER_REVIEW_WITH_DESC ? "感谢详细的描述,这对其他人帮助很大" : `感谢你的贡献`}
-        </p>
-        <button onClick={reset} style={{ marginTop: 8, padding: "12px 28px", borderRadius: 10, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>再提交一条</button>
-      </div>
-    );
-  }
-
-  const currentLevel = getLevelSubmit(score);
+  const refreshQuota = () => {
+    setQuotaState(getQuota());
+    setView("home");
+  };
 
   return (
-    <div style={{ paddingBottom: 100, width: "100%", boxSizing: "border-box" }}>
-      <div style={cardStyle}>
-        <SectionTitle hint="支持上海全市小区" required>选择小区</SectionTitle>
-        <div style={{ position: "relative" }}>
-          <input value={search}
-            onChange={(e) => { setSearch(e.target.value); setCommunity(null); setShowSearch(true); }}
-            onFocus={() => setShowSearch(true)}
-            placeholder="输入小区名称..."
-            style={{ width: "100%", padding: "14px 16px", borderRadius: 10, border: `1px solid ${community ? "#0a8554" : C.borderDark}`, background: "#fff", color: C.text, fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: FONT }} />
-          {showSearch && search.trim() && !community && (
-            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 10, background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", maxHeight: 320, overflowY: "auto" }}>
-              {searching && <div style={{ padding: "14px 16px", fontSize: 13, color: C.textLight, textAlign: "center" }}>搜索中...</div>}
-              {!searching && suggestions.length === 0 && <div style={{ padding: "14px 16px", fontSize: 13, color: C.textLight, textAlign: "center" }}>没有找到匹配的小区</div>}
-              {suggestions.map(s => (
-                <div key={s.id} onClick={() => pick(s)} style={{ padding: "12px 16px", cursor: "pointer", borderBottom: `1px solid ${C.border}`, fontSize: 14, color: C.text }}
-                  onMouseEnter={e => e.currentTarget.style.background = C.bg}
-                  onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-                  <div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-                    {s.name}
-                    {s.isAmap && <span style={{ fontSize: 10,
+    <div style={{ maxWidth: 430, margin: "0 auto", padding: "20px 16px", minHeight: "100vh", background: C.bg, fontFamily: FONT, boxSizing: "border-box" }}>
+      {view === "home" && <HomeSearch onPick={handlePick} currentSeedData={data} quota={quota} onGoSubmit={() => setView("submit")} />}
+      {view === "detail" && <CommunityDetail item={selectedItem} onBack={() => setView("home")} onGoSubmit={() => setView("submit")} />}
+      {view === "submit" && <SubmitForm currentSeedData={data} onSubmitted={refreshQuota} />}
+      
+      {/* 底部导航栏 */}
+      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#fff", borderTop: `1px solid ${C.border}`, display: "flex", padding: "10px 0", paddingBottom: "calc(10px + padding-bottom)", zIndex: 90 }}>
+        <div onClick={() => setView("home")} style={{ flex: 1, textAlign: "center", color: view === "home" ? C.text : C.textLight, fontSize: 12, fontWeight: 600 }}>🔍 搜索</div>
+        <div onClick={() => setView("submit")} style={{ flex: 1, textAlign: "center", color: view === "submit" ? C.text : C.textLight, fontSize: 12, fontWeight: 600 }}>📝 反馈</div>
+      </nav>
+    </div>
+  );
+}
