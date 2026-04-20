@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ============ 配置 ============
 const API_BASE = "https://noisemirror-api.lettylvdonggood.workers.dev";
-const AMAP_KEY = "	5d974e69e638bf4353d7846bfa87f9f6"; // ⚠️ 上线前换新 key + 配白名单
+const AMAP_KEY = "43bdf8540c4f4a21f71db6aa761e998f"; // ⚠️ 上线前换新 key + 配白名单
 const LS_KEY_USER = "noisemirror_user_id";
 const LS_KEY_QUOTA = "noisemirror_quota";
 const LS_KEY_USED = "noisemirror_used_ids";
@@ -788,16 +788,53 @@ export default function App() {
   const [seedData, setSeedData] = useState(SEED_DATA);
   const [showQuotaAlert, setShowQuotaAlert] = useState(false);
 
+  const loadAndMergeData = () => {
+    Promise.all([
+      loadExcelData("/data.xlsx").then(rows => (rows && rows.length > 0) ? rows : FALLBACK_DATA),
+      fetch(`${API_BASE}/api/stats`).then(r => r.json()).then(d => d.data || []).catch(() => []),
+    ]).then(([excelRows, apiStats]) => {
+      const apiMap = {};
+      apiStats.forEach(s => {
+        const key = normalize(s.community_name) + "_" + normalize(s.district);
+        apiMap[key] = s;
+      });
+
+      const merged = excelRows.map(item => {
+        const key = normalize(item.name) + "_" + normalize(item.district);
+        const api = apiMap[key];
+        if (api && api.review_count > 0) {
+          const excelTotal = item.score * (item.reviews || 1);
+          const excelCount = item.reviews || 1;
+          const combinedTotal = excelTotal + api.total_score;
+          const combinedCount = excelCount + api.review_count;
+          const avgScore = Math.round(combinedTotal / combinedCount);
+          return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
+        }
+        return item;
+      });
+
+      const excelKeys = new Set(excelRows.map(i => normalize(i.name) + "_" + normalize(i.district)));
+      apiStats.forEach(s => {
+        const key = normalize(s.community_name) + "_" + normalize(s.district);
+        if (!excelKeys.has(key) && s.review_count > 0) {
+          merged.push({
+            id: "api_" + key, name: s.community_name, district: s.district,
+            address: s.address || "", score: Math.max(1, Math.min(5, s.avg_score)),
+            noiseLevel: "neighbor", reviews: s.review_count, source: "", _hasApiData: true,
+          });
+        }
+      });
+
+      SEED_DATA = merged;
+      setSeedData(merged);
+    });
+  };
+
   useEffect(() => {
     getOrCreateUserId();
     setQuotaState(getQuota());
     setSubmitCount(parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10));
-    loadExcelData("/data.xlsx").then(rows => {
-      if (rows && rows.length > 0) {
-        SEED_DATA = rows;
-        setSeedData(rows);
-      }
-    });
+    loadAndMergeData();
   }, []);
 
   const handlePick = (item) => {
@@ -814,6 +851,8 @@ export default function App() {
   const onSubmitted = () => {
     setSubmitCount(parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10));
     setQuotaState(getQuota());
+    // 重新拉取 API 数据,刷新评分
+    setTimeout(() => loadAndMergeData(), 500);
   };
 
   const goSubmit = () => { setPicked(null); setShowQuotaAlert(false); setTab("submit"); };
