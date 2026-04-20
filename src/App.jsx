@@ -176,33 +176,14 @@ async function searchAmapPOI(keyword, city = "上海") {
 // ============ Viewport 修复 ============
 function useViewportFix() {
   useEffect(() => {
+    // 确保 viewport meta 正确设置，防止 iOS 输入框聚焦时自动缩放
     let meta = document.querySelector('meta[name="viewport"]');
     if (!meta) {
       meta = document.createElement('meta');
       meta.name = 'viewport';
       document.head.appendChild(meta);
     }
-    // 改为允许缩放，让浏览器自动适配
-    meta.content = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
-    
-    // 添加全局样式修复溢出
-    const style = document.createElement('style');
-    style.textContent = `
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        overflow-x: hidden;
-      }
-      #root {
-        width: 100%;
-        overflow-x: hidden;
-      }
-    `;
-    document.head.appendChild(style);
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
 }
 
@@ -483,7 +464,6 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
   const trimmedComment = comment.trim();
   const willEarn = trimmedComment.length >= DESC_MIN_LEN ? QUOTA_PER_REVIEW_WITH_DESC : QUOTA_PER_REVIEW;
 
-
   const pick = (item) => { setCommunity(item); setSearch(item.name); setShowSearch(false); };
 
   const handleSubmit = () => {
@@ -513,22 +493,22 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
     setNoiseLevel(""); setScore(3); setComment(""); setEarnedQuota(0);
   };
 
-if (submitted) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", gap: 16, textAlign: "center", width: "100%", maxWidth: "100%", boxSizing: "border-box", margin: "0 auto" }}>
-      <div style={{ width: 64, height: 64, borderRadius: 32, background: "#0a8554", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 32, flexShrink: 0 }}>✓</div>
-      <h3 style={{ color: C.text, fontSize: 20, margin: 0, fontWeight: 700 }}>提交成功</h3>
-      <div style={{ padding: "14px 20px", background: "#fff", border: `2px solid #0a8554`, borderRadius: 12, width: "auto", minWidth: 200, maxWidth: "90%", boxSizing: "border-box" }}>
-        <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>已为你发放</p>
-        <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "#0a8554" }}>+{earnedQuota} 次查询机会</p>
+  if (submitted) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px 40px", gap: 16, textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 32, background: "#0a8554", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 32 }}>✓</div>
+        <h3 style={{ color: C.text, fontSize: 20, margin: 0, fontWeight: 700 }}>提交成功</h3>
+        <div style={{ padding: "14px 24px", background: "#fff", border: `2px solid #0a8554`, borderRadius: 12 }}>
+          <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>已为你发放</p>
+          <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "#0a8554" }}>+{earnedQuota} 次查询机会</p>
+        </div>
+        <p style={{ color: C.textMuted, fontSize: 13, maxWidth: 280, lineHeight: 1.6 }}>
+          {earnedQuota === QUOTA_PER_REVIEW_WITH_DESC ? "感谢详细的描述,这对其他人帮助很大" : `下次写 ${DESC_MIN_LEN} 字以上的描述可额外再 +1 次哦`}
+        </p>
+        <button onClick={reset} style={{ marginTop: 8, padding: "12px 28px", borderRadius: 10, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>再提交一条</button>
       </div>
-      <p style={{ color: C.textMuted, fontSize: 13, maxWidth: 260, lineHeight: 1.6, margin: "0 auto", padding: "0 16px" }}>
-        {earnedQuota === QUOTA_PER_REVIEW_WITH_DESC ? "感谢详细的描述,这对其他人帮助很大" : "下次写10字以上的描述可额外再+1次哦"}
-      </p>
-      <button onClick={reset} style={{ marginTop: 8, padding: "12px 28px", borderRadius: 10, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>再提交一条</button>
-    </div>
-  );
-}
+    );
+  }
 
   const currentLevel = getLevelSubmit(score);
 
@@ -602,22 +582,24 @@ if (submitted) {
       </div>
 
       {/* 补充描述 */}
-<div style={{ ...cardStyle, border: `2px solid ${trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.bannerBorder}`, background: trimmedComment.length >= DESC_MIN_LEN ? "#f0fdf4" : C.bannerBg }}>
-  <h4 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: C.text, textAlign: "center" }}>补充描述</h4>
-  <p style={{ margin: "0 0 16px", fontSize: 12, color: C.textMuted, lineHeight: 1.5, textAlign: "left" }}>
-    📝 内容不会公开展示。<br />
-    如需查看有详细描述的完整小区名单,可联系客服获取。
-  </p>
-  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-    <div style={{ padding: "4px 10px", background: "#fff", border: `1px solid ${C.borderDark}`, borderRadius: 999, fontSize: 11, color: C.text, fontWeight: 600 }}>+{willEarn} 次</div>
-  </div>
-  <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="例:楼板太薄,能听到楼上小孩跑跳声。" rows={4}
-    style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
-  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
-    <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
-    <span>{trimmedComment.length} / {DESC_MIN_LEN}</span>
-  </div>
-</div>
+      <div style={{ ...cardStyle, border: `2px solid ${trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.bannerBorder}`, background: trimmedComment.length >= DESC_MIN_LEN ? "#f0fdf4" : C.bannerBg }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>补充描述</h4>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
+              📝 内容不会公开展示。<br />
+              如需查看有详细描述的完整小区名单,可联系客服获取。
+            </p>
+          </div>
+          <div style={{ padding: "4px 10px", background: "#fff", border: `1px solid ${C.borderDark}`, borderRadius: 999, fontSize: 11, color: C.text, fontWeight: 600, whiteSpace: "nowrap", marginLeft: 8 }}>+{willEarn} 次</div>
+        </div>
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder={`例:楼板太薄,能听到楼上小孩跑跳声。填 ${DESC_MIN_LEN} 字以上额外再 +1 次查询`} rows={4}
+          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
+          <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
+          <span>{trimmedComment.length} / {DESC_MIN_LEN}</span>
+        </div>
+      </div>
 
       <button onClick={handleSubmit} disabled={!canSubmit} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: canSubmit ? C.text : C.borderDark, color: "#fff", fontSize: 16, fontWeight: 600, cursor: canSubmit ? "pointer" : "not-allowed", marginTop: 8 }}>
         提交评价
