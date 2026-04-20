@@ -13,7 +13,7 @@ const INITIAL_QUOTA = 1;
 const QUOTA_PER_REVIEW = 1;
 const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
-const PAGE_SIZE = 5; // 每页展示数量
+const PAGE_SIZE = 3; // 每页展示数量
 
 // ============ 口径 ============
 // 详情页用的完整描述（保留帖子/评论相关说明）
@@ -176,7 +176,7 @@ async function searchAmapPOI(keyword, city = "上海") {
 // ============ Viewport 修复 ============
 function useViewportFix() {
   useEffect(() => {
-    // 确保 viewport meta 正确设置，防止 iOS 输入框聚焦时自动缩放
+    // 确保 viewport meta 正确设置
     let meta = document.querySelector('meta[name="viewport"]');
     if (!meta) {
       meta = document.createElement('meta');
@@ -184,6 +184,16 @@ function useViewportFix() {
       document.head.appendChild(meta);
     }
     meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+
+    // 全局样式修复
+    const style = document.createElement('style');
+    style.textContent = `
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; margin: 0; padding: 0; }
+      body { -webkit-text-size-adjust: 100%; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
   }, []);
 }
 
@@ -495,17 +505,17 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
 
   if (submitted) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px 60px", gap: 20, textAlign: "center", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0 40px", gap: 20, textAlign: "center" }}>
         <div style={{ width: 72, height: 72, borderRadius: 36, background: "#0a8554", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 36 }}>✓</div>
         <h3 style={{ color: C.text, fontSize: 22, margin: 0, fontWeight: 700 }}>提交成功</h3>
-        <div style={{ padding: "18px 32px", background: "#fff", border: `2px solid #0a8554`, borderRadius: 14, width: "100%", maxWidth: 280, boxSizing: "border-box" }}>
+        <div style={{ padding: "18px 0", background: "#fff", border: `2px solid #0a8554`, borderRadius: 14, width: "100%", boxSizing: "border-box" }}>
           <p style={{ margin: 0, fontSize: 14, color: C.textMuted }}>已为你发放</p>
           <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700, color: "#0a8554" }}>+{earnedQuota} 次查询机会</p>
         </div>
-        <p style={{ color: C.textMuted, fontSize: 14, maxWidth: 300, lineHeight: 1.6, margin: 0 }}>
+        <p style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.6, margin: 0 }}>
           {earnedQuota === QUOTA_PER_REVIEW_WITH_DESC ? "感谢详细的描述,这对其他人帮助很大" : `下次写 ${DESC_MIN_LEN} 字以上的描述可额外再 +1 次哦`}
         </p>
-        <button onClick={reset} style={{ marginTop: 12, padding: "14px 36px", borderRadius: 12, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>再提交一条</button>
+        <button onClick={reset} style={{ marginTop: 8, padding: "14px 0", borderRadius: 12, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%" }}>再提交一条</button>
       </div>
     );
   }
@@ -822,7 +832,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT, color: C.text, maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT, color: C.text, width: "100%", maxWidth: 480, margin: "0 auto", position: "relative", boxSizing: "border-box", overflowX: "hidden" }}>
       {/* 顶栏 */}
       <div style={{ padding: "16px 20px", background: "#fff", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
         <div>
