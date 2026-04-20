@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ============ 配置 ============
 const API_BASE = "https://noisemirror-api.lettylvdonggood.workers.dev";
-const AMAP_KEY = "43bdf8540c4f4a21f71db6aa761e998f"; // ⚠️ 上线前换新 key + 配白名单
+const AMAP_KEY = "	5d974e69e638bf4353d7846bfa87f9f6"; // ⚠️ 上线前换新 key + 配白名单
 const LS_KEY_USER = "noisemirror_user_id";
 const LS_KEY_QUOTA = "noisemirror_quota";
 const LS_KEY_USED = "noisemirror_used_ids";
