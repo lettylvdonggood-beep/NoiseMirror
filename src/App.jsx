@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ============ 配置 ============
+const API_BASE = "https://noisemirror-api.lettylvdonggood.workers.dev";
 const AMAP_KEY = "43bdf8540c4f4a21f71db6aa761e998f"; // ⚠️ 上线前换新 key + 配白名单
 const LS_KEY_USER = "noisemirror_user_id";
 const LS_KEY_QUOTA = "noisemirror_quota";
@@ -236,7 +237,7 @@ function CommunityCard({ item, onClick }) {
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: -0.2 }}>{item.name}</h3>
             {totalReports > 0 && <span style={{ fontSize: 12, color: C.textLight, flexShrink: 0 }}>已反馈 {totalReports} 次</span>}
           </div>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{item.district}</p>
           {hasScore && (
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 999, background: level.color + "15", color: level.color, fontWeight: 600 }}>{level.label}</span>
@@ -476,20 +477,32 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
 
   const pick = (item) => { setCommunity(item); setSearch(item.name); setShowSearch(false); };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
     const userId = getOrCreateUserId();
     const submission = {
-      userId, timestamp: Date.now(),
+      userId,
       community: { id: community.id, name: community.name, district: community.district, address: community.address, location: community.location || null },
       noiseLevel, score, comment: trimmedComment,
     };
+
+    // 提交到后端 API
+    try {
+      await fetch(`${API_BASE}/api/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submission),
+      });
+    } catch (e) {
+      console.warn("API 提交失败,已本地保存", e);
+    }
+
+    // 本地也存一份（兜底 + 本地计数）
     const queue = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
-    queue.push(submission);
+    queue.push({ ...submission, timestamp: Date.now() });
     localStorage.setItem(LS_KEY_PRIVATE_QUEUE, JSON.stringify(queue));
     const count = parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10) + 1;
     localStorage.setItem(LS_KEY_SUBMITS, String(count));
-    // 增加该小区的反馈计数
     addReportCount(community.id);
     const earned = willEarn;
     setQuota(getQuota() + earned);
@@ -846,7 +859,7 @@ export default function App() {
 
       {/* 测试版提示 */}
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-        🧪 测试版 · 当前仅开放上海 · 找房人的互助小本子,一起写 👉
+        🧪 测试版 · 当前仅开放上海 · 噪敏找房人的互助平台
       </div>
 
       {/* 内容区:底部留 76px 给 Tab 栏 */}
