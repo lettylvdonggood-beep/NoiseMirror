@@ -9,6 +9,8 @@ const LS_KEY_USED = "noisemirror_used_ids";
 const LS_KEY_SUBMITS = "noisemirror_submitted_count";
 const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
 const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts";
+const LS_KEY_QUOTA_VERSION = "noisemirror_quota_v";
+const CURRENT_QUOTA_VERSION = 2;
 
 const INITIAL_QUOTA = 3;
 const QUOTA_PER_REVIEW = 1;
@@ -136,8 +138,18 @@ function getOrCreateUserId() {
   return id;
 }
 function getQuota() {
+  const ver = parseInt(localStorage.getItem(LS_KEY_QUOTA_VERSION) || "0");
+  if (ver < CURRENT_QUOTA_VERSION) {
+    const old = parseInt(localStorage.getItem(LS_KEY_QUOTA) || "1");
+    const bonus = INITIAL_QUOTA - 1;
+    localStorage.setItem(LS_KEY_QUOTA, String(old + bonus));
+    localStorage.setItem(LS_KEY_QUOTA_VERSION, String(CURRENT_QUOTA_VERSION));
+  }
   const v = localStorage.getItem(LS_KEY_QUOTA);
-  if (v === null) { localStorage.setItem(LS_KEY_QUOTA, String(INITIAL_QUOTA)); return INITIAL_QUOTA; }
+  if (v === null) {
+    localStorage.setItem(LS_KEY_QUOTA, String(INITIAL_QUOTA));
+    return INITIAL_QUOTA;
+  }
   return parseInt(v, 10) || 0;
 }
 function setQuota(n) { localStorage.setItem(LS_KEY_QUOTA, String(n)); }
