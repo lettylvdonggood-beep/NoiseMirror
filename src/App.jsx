@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ============ 配置 ============
 const API_BASE = "https://api.noisemirrow.asia";
-const AMAP_KEY = "	1be148ed267fe0515a492a9b7b876840"; 
+const AMAP_KEY = "1be148ed267fe0515a492a9b7b876840"; 
 const LS_KEY_USER = "noisemirror_user_id";
 const LS_KEY_QUOTA = "noisemirror_quota";
 const LS_KEY_USED = "noisemirror_used_ids";
