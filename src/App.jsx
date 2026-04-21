@@ -8,16 +8,15 @@ const LS_KEY_QUOTA = "noisemirror_quota";
 const LS_KEY_USED = "noisemirror_used_ids";
 const LS_KEY_SUBMITS = "noisemirror_submitted_count";
 const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
-const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts"; // 新增：记录每个小区被反馈次数
+const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts";
 
 const INITIAL_QUOTA = 1;
 const QUOTA_PER_REVIEW = 1;
 const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
-const PAGE_SIZE = 3; // 每页展示数量
+const PAGE_SIZE = 3;
 
 // ============ 口径 ============
-// 详情页用的完整描述（保留帖子/评论相关说明）
 const SCORE_LEVELS_DETAIL = [
   { v: 1, label: "基本安静", color: "#0a8554", desc: '偶有个别帖子提及,未成共识(如"还行")' },
   { v: 2, label: "轻度", color: "#84cc16", desc: '个位数帖子/评论提及,描述笼统(如"避雷")' },
@@ -26,7 +25,6 @@ const SCORE_LEVELS_DETAIL = [
   { v: 5, label: "极度", color: "#991b1b", desc: "社区共识,有人为此搬离" },
 ];
 
-// 提交评价时用的简化描述（面向用户的评判标准）
 const SCORE_LEVELS_SUBMIT = [
   { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
   { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
@@ -35,7 +33,6 @@ const SCORE_LEVELS_SUBMIT = [
   { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
 ];
 
-// 评分标准弹窗也用简化版
 const SCORE_LEVELS_GUIDE = [
   { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
   { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
@@ -51,7 +48,7 @@ const NOISE_LEVELS = [
 
 const DISTRICTS = ["全部", "浦东新区", "普陀区", "虹口区", "闵行区", "长宁区", "徐汇区", "黄浦区", "静安区", "杨浦区", "宝山区", "嘉定区", "松江区", "青浦区", "奉贤区", "金山区", "崇明区"];
 
-// ============ 兜底数据(Excel 加载失败时使用) ============
+// ============ 兜底数据 ============
 const FALLBACK_DATA = [
   { id: "seed_1", name: "中远两湾城", district: "普陀区", address: "远景路97弄", score: 5, noiseLevel: "traffic", reviews: 12, source: "示例数据" },
   { id: "seed_2", name: "上海康城", district: "闵行区", address: "莘松路", score: 4, noiseLevel: "neighbor", reviews: 15, source: "示例数据" },
@@ -59,19 +56,26 @@ const FALLBACK_DATA = [
 
 let SEED_DATA = [...FALLBACK_DATA];
 
+// ============ 工具函数：安全判断是否有有效评分 ============
+function isValidScore(score) {
+  return typeof score === "number" && !isNaN(score) && score >= 1 && score <= 5;
+}
+
 function parseExcelRow(row, idx) {
-  const safeNum = (v, def = 3) => {
+  const safeNum = (v) => {
     const n = parseInt(v);
-    return isNaN(n) ? def : Math.max(1, Math.min(5, n));
+    if (isNaN(n)) return null; // 返回 null 而不是默认值，表示"没有评分"
+    return Math.max(1, Math.min(5, n));
   };
   const validLevels = NOISE_LEVELS.map(n => n.id);
   const level = (row.noise_level || "neighbor").toString().trim().toLowerCase();
+  const parsedScore = safeNum(row.score);
   return {
     id: "xls_" + idx,
     name: (row.name || "").toString().trim(),
     district: (row.district || "").toString().trim(),
     address: (row.address || "").toString().trim(),
-    score: safeNum(row.score),
+    score: parsedScore, // 可能是 null（表示Excel里没填评分）
     noiseLevel: validLevels.includes(level) ? level : "neighbor",
     reviews: parseInt(row.review_count) || 0,
     source: (row.source_note || "").toString() || (parseInt(row.review_count) ? `${parseInt(row.review_count)}条用户整理` : "小红书用户整理"),
@@ -142,7 +146,6 @@ function addUsedId(id) {
   if (!u.includes(id)) { u.push(id); localStorage.setItem(LS_KEY_USED, JSON.stringify(u)); }
 }
 
-// 反馈次数管理
 function getReportCounts() {
   try { return JSON.parse(localStorage.getItem(LS_KEY_REPORT_COUNTS) || "{}"); } catch { return {}; }
 }
@@ -177,7 +180,6 @@ async function searchAmapPOI(keyword, city = "上海") {
 // ============ Viewport 修复 ============
 function useViewportFix() {
   useEffect(() => {
-    // 确保 viewport meta 正确设置
     let meta = document.querySelector('meta[name="viewport"]');
     if (!meta) {
       meta = document.createElement('meta');
@@ -185,8 +187,6 @@ function useViewportFix() {
       document.head.appendChild(meta);
     }
     meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
-
-    // 全局样式修复
     const style = document.createElement('style');
     style.textContent = `
       *, *::before, *::after { box-sizing: border-box; }
@@ -219,12 +219,11 @@ function QuotaBadge({ quota }) {
 }
 
 function CommunityCard({ item, onClick }) {
-  const hasScore = typeof item.score === "number";
-  const hasScore = typeof item.score === "number" && !isNaN(item.score);
+  // ✅ 修复：用 isValidScore 替代 typeof 检查，防止 NaN 和 null 穿透
+  const hasScore = isValidScore(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const reportCount = getReportCount(item.id);
-  // 总反馈次数 = 原始 reviews + 用户新增反馈
   const totalReports = (item.reviews || 0) + reportCount;
 
   return (
@@ -265,7 +264,6 @@ function SectionTitle({ children, hint, required, action }) {
   );
 }
 
-// ============ 评分标准弹窗（用简化版描述） ============
 function ScoreGuideModal({ onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
@@ -313,10 +311,9 @@ function QuotaPaywall({ onGoSubmit }) {
   );
 }
 
-// ============ 分页组件 ============
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
-
+  
   const getPageNumbers = () => {
     const pages = [];
     const maxShow = 5;
@@ -340,7 +337,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
           fontSize: 13, cursor: currentPage === 1 ? "not-allowed" : "pointer", fontWeight: 500,
         }}
       >上一页</button>
-
+      
       {getPageNumbers().map(p => (
         <button
           key={p}
@@ -353,7 +350,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
           }}
         >{p}</button>
       ))}
-
+      
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
@@ -369,8 +366,8 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 
 // ============ 详情页 ============
 function CommunityDetail({ item, onBack, onGoSubmit }) {
-  const hasScore = typeof item.score === "number";
-  const hasScore = typeof item.score === "number" && !isNaN(item.score);
+  // ✅ 修复：用 isValidScore 替代 typeof 检查
+  const hasScore = isValidScore(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const [showGuide, setShowGuide] = useState(false);
@@ -441,7 +438,7 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
 }
 
 // ============ 提交表单 ============
-function SubmitForm({ onSubmitted, currentSeedData }) {
+function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
   const [search, setSearch] = useState("");
   const [community, setCommunity] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -488,7 +485,6 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
       noiseLevel, score, comment: trimmedComment,
     };
 
-    // 提交到后端 API
     try {
       await fetch(`${API_BASE}/api/submit`, {
         method: "POST",
@@ -499,7 +495,6 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
       console.warn("API 提交失败,已本地保存", e);
     }
 
-    // 本地也存一份（兜底 + 本地计数）
     const queue = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
     queue.push({ ...submission, timestamp: Date.now() });
     localStorage.setItem(LS_KEY_PRIVATE_QUEUE, JSON.stringify(queue));
@@ -531,6 +526,9 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
           {earnedQuota === QUOTA_PER_REVIEW_WITH_DESC ? "感谢详细的描述,这对其他人帮助很大" : `下次写 ${DESC_MIN_LEN} 字以上的描述可额外再 +1 次哦`}
         </p>
         <button onClick={reset} style={{ marginTop: 8, padding: "14px 0", borderRadius: 12, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.text, fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%" }}>再提交一条</button>
+        <button onClick={onGoHome} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: C.bg, color: C.textMuted, fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 8 }}>
+          返回首页
+        </button>
       </div>
     );
   }
@@ -606,7 +604,6 @@ function SubmitForm({ onSubmitted, currentSeedData }) {
         </div>
       </div>
 
-      {/* 补充描述 */}
       <div style={{ ...cardStyle, border: `2px solid ${trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.bannerBorder}`, background: trimmedComment.length >= DESC_MIN_LEN ? "#f0fdf4" : C.bannerBg }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -655,7 +652,6 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  // 切换区时重置页码
   useEffect(() => { setCurrentPage(1); }, [district, query]);
 
   let displayList;
@@ -668,14 +664,21 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
   } else {
     displayList = currentSeedData
       .filter(i => district === "全部" || i.district === district)
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        // ✅ 有评分的排前面，无评分的排后面
+        const aValid = isValidScore(a.score);
+        const bValid = isValidScore(b.score);
+        if (aValid && !bValid) return -1;
+        if (!aValid && bValid) return 1;
+        if (aValid && bValid) return b.score - a.score;
+        return 0;
+      });
   }
 
   const totalPages = Math.max(1, Math.ceil(displayList.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const pagedList = query.trim() ? displayList : displayList.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // 翻到第3页且从未提交过评价时，提示贡献
   const showContributeGate = !query.trim() && safePage >= 3 && submitCount === 0;
 
   return (
@@ -727,7 +730,6 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
         pagedList.map(item => <CommunityCard key={item.id} item={item} onClick={() => onPick(item)} />)
       )}
 
-      {/* 分页 - 仅非搜索模式下且不在贡献门槛时显示 */}
       {!query.trim() && !showContributeGate && (
         <Pagination
           currentPage={safePage}
@@ -763,7 +765,7 @@ function ProfilePanel({ onClose, quota, submitCount, onResetData }) {
 
         <div style={{ padding: 14, background: C.bg, borderRadius: 12, marginBottom: 16 }}>
           <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>设备 ID</p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: C.text, fontFamily: "monospace", wordBreak: "break-all" }}>{userId}</p>
+          <p style={{ margin: "0 0", fontSize: 12, color: C.text, fontFamily: "monospace", wordBreak: "break-all" }}>{userId}</p>
         </div>
 
         <p style={{ margin: "0 0 16px", fontSize: 11, color: C.textLight, lineHeight: 1.6 }}>
@@ -780,7 +782,7 @@ function ProfilePanel({ onClose, quota, submitCount, onResetData }) {
 
 // ============ 主 App ============
 export default function App() {
-  useViewportFix(); // 修复 viewport 适配
+  useViewportFix();
 
   const [tab, setTab] = useState("home");
   const [picked, setPicked] = useState(null);
@@ -790,11 +792,8 @@ export default function App() {
   const [seedData, setSeedData] = useState(SEED_DATA);
   const [showQuotaAlert, setShowQuotaAlert] = useState(false);
 
-
-
-  
   const loadAndMergeData = async () => {
-    // 第一步：先加载 Excel 并立即显示，保证 42 个小区一定出来
+    // 第一步：加载 Excel
     let excelRows = FALLBACK_DATA;
     try {
       const rows = await loadExcelData("/data.xlsx");
@@ -803,7 +802,7 @@ export default function App() {
     SEED_DATA = excelRows;
     setSeedData([...excelRows]);
 
-    // 第二步：拉 API 做增量合并，失败不影响已显示的数据
+    // 第二步：拉 API 做增量合并
     try {
       const r = await fetch(`${API_BASE}/api/stats`);
       const d = await r.json();
@@ -820,25 +819,43 @@ export default function App() {
         const key = normalize(item.name) + "_" + normalize(item.district);
         const api = apiMap[key];
         if (api && api.review_count > 0) {
-          const excelTotal = item.score * (item.reviews || 1);
-          const excelTotal = (isNaN(item.score) ? 0 : item.score) * (item.reviews || 1);
-          const excelCount = item.reviews || 1;
-          const combinedTotal = excelTotal + api.total_score;
-          const combinedCount = excelCount + api.review_count;
-          const avgScore = Math.round(combinedTotal / combinedCount);
-          return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
+          const excelHasScore = isValidScore(item.score);
+
+          if (excelHasScore) {
+            // ✅ Excel 有有效评分：加权合并
+            const excelTotal = item.score * (item.reviews || 1);
+            const excelCount = item.reviews || 1;
+            const combinedTotal = excelTotal + api.total_score;
+            const combinedCount = excelCount + api.review_count;
+            const avgScore = Math.round(combinedTotal / combinedCount);
+            return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
+          } else {
+            // ✅ 关键修复：Excel 没有评分但 API 有用户提交的评分 → 直接用 API 的评分
+            const avgScore = Math.round(api.total_score / api.review_count);
+            return {
+              ...item,
+              score: Math.max(1, Math.min(5, avgScore)),
+              reviews: api.review_count,
+              noiseLevel: api.noise_level || item.noiseLevel || "neighbor",
+              _hasApiData: true,
+            };
+          }
         }
         return item;
       });
 
+      // 处理 Excel 里完全没有、但 API 有的小区
       const excelKeys = new Set(excelRows.map(i => normalize(i.name) + "_" + normalize(i.district)));
       apiStats.forEach(s => {
         const key = normalize(s.community_name) + "_" + normalize(s.district);
         if (!excelKeys.has(key) && s.review_count > 0) {
+          const avgScore = Math.round(s.total_score / s.review_count);
           merged.push({
             id: "api_" + key, name: s.community_name, district: s.district,
-            address: s.address || "", score: Math.max(1, Math.min(5, s.avg_score)),
-            noiseLevel: "neighbor", reviews: s.review_count, source: "", _hasApiData: true,
+            address: s.address || "",
+            score: Math.max(1, Math.min(5, avgScore)),
+            noiseLevel: s.noise_level || "neighbor",
+            reviews: s.review_count, source: "", _hasApiData: true,
           });
         }
       });
@@ -849,8 +866,7 @@ export default function App() {
       console.warn("API 数据加载失败,继续使用 Excel 数据", e);
     }
 
-  // 在 loadAndMergeData 函数末尾，setSeedData(merged) 之前加上：
-  // 第三步：合并本地提交队列的数据
+    // 第三步：合并本地提交队列的数据
     try {
       const queue = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
       if (queue.length > 0) {
@@ -862,11 +878,11 @@ export default function App() {
           localMap[key].total += q.score;
           localMap[key].count += 1;
         });
-    
+
         // 当前 merged 数据的 key 集合（注意这里 merged 可能还叫 excelRows，取决于 API 是否成功）
         const currentData = SEED_DATA; // 此时 SEED_DATA 已经是最新的
         const currentKeys = new Set(currentData.map(i => normalize(i.name) + "_" + normalize(i.district)));
-    
+
         Object.entries(localMap).forEach(([key, local]) => {
           const idx = currentData.findIndex(i => normalize(i.name) + "_" + normalize(i.district) === key);
           if (idx !== -1) {
@@ -894,20 +910,15 @@ export default function App() {
             });
           }
         });
+
         SEED_DATA = currentData;
         setSeedData([...currentData]);
       }
     } catch (e) {
       console.warn("本地队列合并失败", e);
     }
-};
+  };
 
-
-
-
-
-
-  
   useEffect(() => {
     getOrCreateUserId();
     setQuotaState(getQuota());
@@ -929,7 +940,6 @@ export default function App() {
   const onSubmitted = () => {
     setSubmitCount(parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10));
     setQuotaState(getQuota());
-    // 重新拉取 API 数据,刷新评分
     setTimeout(() => loadAndMergeData(), 500);
   };
 
@@ -941,24 +951,6 @@ export default function App() {
     setSubmitCount(0);
     setQuotaState(getQuota());
     setShowProfile(false);
-  };
-
-  const onExport = () => {
-    const data = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
-    if (data.length === 0) { alert("暂无数据"); return; }
-    const header = "时间,设备ID,小区,区域,地址,经纬度,噪音类型,评分,描述";
-    const rows = data.map(d => [
-      new Date(d.timestamp).toLocaleString("zh-CN"),
-      d.userId, d.community.name, d.community.district, d.community.address,
-      d.community.location || "", d.noiseLevel, d.score,
-      `"${(d.comment || "").replace(/"/g, '""')}"`,
-    ].join(","));
-    const csv = "\ufeff" + [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `noisemirror_data_${Date.now()}.csv`;
-    a.click();
   };
 
   return (
@@ -974,7 +966,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* 测试版提示 */}
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
         🧪 测试版 · 当前仅开放上海 · 噪敏找房人的互助平台
       </div>
@@ -982,7 +973,6 @@ export default function App() {
         评分数据来源于用户主观反馈,仅供参考,不构成任何决策建议
       </div>
 
-      {/* 内容区:底部留 76px 给 Tab 栏 */}
       <div style={{ padding: "16px 16px 96px" }}>
         {showQuotaAlert ? (
           <>
@@ -994,11 +984,10 @@ export default function App() {
         ) : tab === "home" ? (
           <HomeSearch onPick={handlePick} onGoSubmit={goSubmit} currentSeedData={seedData} quota={quota} submitCount={submitCount} />
         ) : (
-          <SubmitForm onSubmitted={onSubmitted} currentSeedData={seedData} />
+          <SubmitForm onSubmitted={onSubmitted} currentSeedData={seedData} onGoHome={() => setTab("home")} />
         )}
       </div>
 
-      {/* 底部 Tab 栏 - fixed 固定贴屏幕底部 */}
       {!picked && !showQuotaAlert && (
         <div style={{
           position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
