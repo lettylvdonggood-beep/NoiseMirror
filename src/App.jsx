@@ -219,7 +219,7 @@ function QuotaBadge({ quota }) {
 }
 
 function CommunityCard({ item, onClick }) {
-  const hasScore = typeof item.score === "number";
+  const hasScore = typeof item.score === "number" && !isNaN(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const reportCount = getReportCount(item.id);
@@ -368,7 +368,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 
 // ============ 详情页 ============
 function CommunityDetail({ item, onBack, onGoSubmit }) {
-  const hasScore = typeof item.score === "number";
+  const hasScore = typeof item.score === "number" && !isNaN(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const [showGuide, setShowGuide] = useState(false);
@@ -815,7 +815,7 @@ export default function App() {
         const key = normalize(item.name) + "_" + normalize(item.district);
         const api = apiMap[key];
         if (api && api.review_count > 0) {
-          const excelTotal = item.score * (item.reviews || 1);
+          const excelTotal = (isNaN(item.score) ? 0 : item.score) * (item.reviews || 1);
           const excelCount = item.reviews || 1;
           const combinedTotal = excelTotal + api.total_score;
           const combinedCount = excelCount + api.review_count;
