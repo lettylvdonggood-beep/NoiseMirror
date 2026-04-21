@@ -896,10 +896,9 @@ export default function App() {
               // 已有评分，加权合并
               const totalScore = item.score * (item.reviews || 1) + local.total;
               const totalCount = (item.reviews || 1) + local.count;
-              const k = 3;
-              score: Math.max(1, Math.min(5, Math.round((totalScore + k * 3) / (totalCount + k))))
+              currentData[idx] = { ...item, score: Math.max(1, Math.min(5, Math.round(totalScore / totalCount))), reviews: totalCount };
             } else {
-              score: Math.max(1, Math.min(5, Math.round((local.total + k * 3) / (local.count + k))))
+              // 无评分，直接用本地数据（本地是用户自己刚提交的，不做收缩）
               currentData[idx] = { ...item, score: Math.max(1, Math.min(5, Math.round(local.total / local.count))), reviews: local.count, noiseLevel: local.noiseLevel };
             }
           } else {
