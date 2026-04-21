@@ -614,7 +614,7 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
           </div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益
+          您不需要一定填写，但我们鼓励噪敏人互帮互助，如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
         </p>
         <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="隔音效果怎么样？什么时间段、什么类型的噪音？" rows={4}
           style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
