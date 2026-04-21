@@ -825,20 +825,23 @@ export default function App() {
           const excelHasScore = isValidScore(item.score);
 
           if (excelHasScore) {
-            // ✅ Excel 有有效评分：加权合并
+            // Excel 有评分：用 avg_score 重构总分后再加权
             const excelTotal = item.score * (item.reviews || 1);
             const excelCount = item.reviews || 1;
-            const combinedTotal = excelTotal + api.total_score;
+            const apiTotal = api.avg_score * api.review_count;
+            const combinedTotal = excelTotal + apiTotal;
             const combinedCount = excelCount + api.review_count;
             const avgScore = Math.round(combinedTotal / combinedCount);
             return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
+          }
           } else {
-            // ✅ 关键修复：Excel 没有评分但 API 有用户提交的评分 → 直接用 API 的评分
+            // ✅ API 返回的是 avg_score（平均分），做贝叶斯收缩
             const k = 3;
-            const avgScore = Math.round((api.total_score + k * 3) / (api.review_count + k));
+            const prior = 3;
+            const shrunken = (api.avg_score * api.review_count + prior * k) / (api.review_count + k);
             return {
               ...item,
-              score: Math.max(1, Math.min(5, avgScore)),
+              score: Math.max(1, Math.min(5, Math.round(shrunken))),
               reviews: api.review_count,
               noiseLevel: api.noise_level || item.noiseLevel || "neighbor",
               _hasApiData: true,
@@ -853,12 +856,13 @@ export default function App() {
       apiStats.forEach(s => {
         const key = normalize(s.community_name) + "_" + normalize(s.district);
         if (!excelKeys.has(key) && s.review_count > 0) {
-        const k = 3;
-        const avgScore = Math.round((s.total_score + k * 3) / (s.review_count + k));
+          const k = 3;
+          const prior = 3;
+          const shrunken = (s.avg_score * s.review_count + prior * k) / (s.review_count + k);
           merged.push({
             id: "api_" + key, name: s.community_name, district: s.district,
             address: s.address || "",
-            score: Math.max(1, Math.min(5, avgScore)),
+            score: Math.max(1, Math.min(5, Math.round(shrunken))),
             noiseLevel: s.noise_level || "neighbor",
             reviews: s.review_count, source: "", _hasApiData: true,
           });
