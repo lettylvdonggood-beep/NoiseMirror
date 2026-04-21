@@ -612,13 +612,12 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>补充描述 <span style={{ fontSize: 12, fontWeight: 400, color: C.textLight }}>选填</span></h4>
           </div>
-          <div style={{ padding: "4px 10px", background: "#fff", border: `1px solid ${C.borderDark}`, borderRadius: 999, fontSize: 11, color: C.text, fontWeight: 600, whiteSpace: "nowrap", marginLeft: 8 }}>+{willEarn} 次</div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          写 {DESC_MIN_LEN} 字以上额外 +1 次查询,你的描述会帮到其他找房人
+          填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益
         </p>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="什么时间段最吵?哪个方向的房子受影响大?住了多久?" rows={4}
-          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 16, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="隔音效果怎么样？什么时间段、什么类型的噪音？" rows={4}
+          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
           <span>{trimmedComment.length} / {DESC_MIN_LEN}</span>
