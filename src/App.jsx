@@ -11,7 +11,7 @@ const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
 const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts";
 const LS_KEY_QUOTA_VERSION = "noisemirror_quota_v";
 const CURRENT_QUOTA_VERSION = 2;
-const VIP_USERS = ["u_ao8hy22ynfwnwn"];
+const VIP_USERS = ["u_mo8hy22ynfwnvn"];
 
 const INITIAL_QUOTA = 3;
 const QUOTA_PER_REVIEW = 1;
