@@ -805,7 +805,7 @@ export default function App() {
     SEED_DATA = excelRows;
     setSeedData([...excelRows]);
 
-    // 第二步：拉 API 做增量合并
+// 第二步：拉 API 做增量合并
     try {
       const r = await fetch(`${API_BASE}/api/stats`);
       const d = await r.json();
@@ -833,9 +833,8 @@ export default function App() {
             const combinedCount = excelCount + api.review_count;
             const avgScore = Math.round(combinedTotal / combinedCount);
             return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
-          }
           } else {
-            // ✅ API 返回的是 avg_score（平均分），做贝叶斯收缩
+            // Excel 没评分：用 API 的 avg_score 做贝叶斯收缩
             const k = 3;
             const prior = 3;
             const shrunken = (api.avg_score * api.review_count + prior * k) / (api.review_count + k);
@@ -860,11 +859,15 @@ export default function App() {
           const prior = 3;
           const shrunken = (s.avg_score * s.review_count + prior * k) / (s.review_count + k);
           merged.push({
-            id: "api_" + key, name: s.community_name, district: s.district,
+            id: "api_" + key,
+            name: s.community_name,
+            district: s.district,
             address: s.address || "",
             score: Math.max(1, Math.min(5, Math.round(shrunken))),
             noiseLevel: s.noise_level || "neighbor",
-            reviews: s.review_count, source: "", _hasApiData: true,
+            reviews: s.review_count,
+            source: "",
+            _hasApiData: true,
           });
         }
       });
