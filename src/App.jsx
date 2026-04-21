@@ -10,7 +10,7 @@ const LS_KEY_SUBMITS = "noisemirror_submitted_count";
 const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
 const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts";
 
-const INITIAL_QUOTA = 1;
+const INITIAL_QUOTA = 3;
 const QUOTA_PER_REVIEW = 1;
 const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
@@ -775,9 +775,6 @@ function ProfilePanel({ onClose, quota, submitCount, onResetData }) {
           演示版本基于本地设备识别,清除浏览器数据会重置。
         </p>
 
-        <button onClick={onResetData} style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${C.borderDark}`, background: "#fff", color: C.textMuted, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-          清除本地数据
-        </button>
       </div>
     </div>
   );
