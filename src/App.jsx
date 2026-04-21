@@ -842,14 +842,17 @@ export default function App() {
             const combinedCount = excelCount + api.review_count;
             const avgScore = Math.round(combinedTotal / combinedCount);
             return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
-          } else {
-            // Excel 没评分：用 API 的 avg_score 做贝叶斯收缩
-            const k = 3;
-            const prior = 3;
-            const shrunken = (api.avg_score * api.review_count + prior * k) / (api.review_count + k);
-            return {
-              ...item,
-              score: Math.max(1, Math.min(5, Math.round(shrunken))),
+            const MIN_FOR_SHRINK = 3;
+              let finalScore;
+              if (api.review_count >= MIN_FOR_SHRINK) {
+                const k = 3, prior = 3;
+                finalScore = (api.avg_score * api.review_count + prior * k) / (api.review_count + k);
+              } else {
+                finalScore = api.avg_score;
+              }
+              return {
+                ...item,
+                score: Math.max(1, Math.min(5, Math.round(finalScore))),
               reviews: api.review_count,
               noiseLevel: api.noise_level || item.noiseLevel || "neighbor",
               _hasApiData: true,
@@ -864,15 +867,17 @@ export default function App() {
       apiStats.forEach(s => {
         const key = normalize(s.community_name) + "_" + normalize(s.district);
         if (!excelKeys.has(key) && s.review_count > 0) {
-          const k = 3;
-          const prior = 3;
-          const shrunken = (s.avg_score * s.review_count + prior * k) / (s.review_count + k);
+          const MIN_FOR_SHRINK = 3;
+          let finalScore;
+          if (s.review_count >= MIN_FOR_SHRINK) {
+            const k = 3, prior = 3;
+            finalScore = (s.avg_score * s.review_count + prior * k) / (s.review_count + k);
+          } else {
+            finalScore = s.avg_score;
+          }
           merged.push({
-            id: "api_" + key,
-            name: s.community_name,
-            district: s.district,
-            address: s.address || "",
-            score: Math.max(1, Math.min(5, Math.round(shrunken))),
+            ...
+            score: Math.max(1, Math.min(5, Math.round(finalScore))),
             noiseLevel: s.noise_level || "neighbor",
             reviews: s.review_count,
             source: "",
