@@ -11,6 +11,7 @@ const LS_KEY_PRIVATE_QUEUE = "noisemirror_private_queue";
 const LS_KEY_REPORT_COUNTS = "noisemirror_report_counts";
 const LS_KEY_QUOTA_VERSION = "noisemirror_quota_v";
 const CURRENT_QUOTA_VERSION = 2;
+const VIP_USERS = ["u_ao8hy22ynfwnwn"];
 
 const INITIAL_QUOTA = 3;
 const QUOTA_PER_REVIEW = 1;
@@ -949,7 +950,7 @@ export default function App() {
   const handlePick = (item) => {
     const usedIds = getUsedIds();
     if (usedIds.includes(item.id)) { setPicked(item); return; }
-    if (quota <= 0) { setShowQuotaAlert(true); return; }
+    if (quota <= 0 && !VIP_USERS.includes(getOrCreateUserId())) { setShowQuotaAlert(true); return; }
     const newQuota = quota - 1;
     setQuota(newQuota);
     setQuotaState(newQuota);
