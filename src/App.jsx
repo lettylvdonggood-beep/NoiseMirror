@@ -876,7 +876,10 @@ export default function App() {
             finalScore = s.avg_score;
           }
           merged.push({
-            ...
+            id: "api_" + key,
+            name: s.community_name,
+            district: s.district,
+            address: s.address || "",
             score: Math.max(1, Math.min(5, Math.round(finalScore))),
             noiseLevel: s.noise_level || "neighbor",
             reviews: s.review_count,
