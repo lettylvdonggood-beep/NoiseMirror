@@ -17,28 +17,31 @@ const DESC_MIN_LEN = 10;
 const PAGE_SIZE = 3;
 
 // ============ 口径 ============
+//详情页
 const SCORE_LEVELS_DETAIL = [
-  { v: 1, label: "基本安静", color: "#0a8554", desc: '偶有个别帖子提及,未成共识(如"还行")' },
-  { v: 2, label: "轻度", color: "#84cc16", desc: '个位数帖子/评论提及,描述笼统(如"避雷")' },
-  { v: 3, label: "中度", color: "#d68910", desc: '多帖提及,有具体场景(如"晚上 10 点还能听到")' },
-  { v: 4, label: "严重", color: "#ef4444", desc: '多帖一致吐槽,有生动细节(如"能听到邻居打呼")' },
-  { v: 5, label: "极度", color: "#991b1b", desc: "社区共识,有人为此搬离" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "无反馈或少量反馈且普遍安静 / 居住体验：完全无感干扰" },
+  { v: 2, label: "轻度", color: "#84cc16", desc: "少量反馈且偶有轻微声音 / 居住体验：不影响日常生活" },
+  { v: 3, label: "中度", color: "#d68910", desc: "一定量反馈且夜间噪音清晰可闻 / 居住体验：有时会受影响" },
+  { v: 4, label: "严重", color: "#ef4444", desc: "较多反馈且公认噪音频繁明显 / 居住体验：日常生活受干扰" },
+  { v: 5, label: "极度", color: "#991b1b", desc: "大量反馈且公认噪音严重难忍 / 居住体验：严重影响睡眠甚至想搬走" },
 ];
 
+//提交页
 const SCORE_LEVELS_SUBMIT = [
-  { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
-  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时会受影响" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "噪音明显且频繁,日常生活受干扰" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰,适合居住" },
+  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但在可接受范围内,不影响居住" },
+  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时候觉得吵,会对休息造成一定干扰" },
+  { v: 4, label: "严重", color: "#ef4444", desc: "噪音非常明显且频繁,让人烦躁,严重干扰正常生活" },
+  { v: 5, label: "极度", color: "#991b1b", desc: "吵到完全无法休息,甚至让人产生想搬走的念头" },
 ];
 
+//评分标准说明
 const SCORE_LEVELS_GUIDE = [
-  { v: 1, label: "基本安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但不影响生活" },
-  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时会受影响" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "噪音明显且频繁,日常生活受干扰" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "噪音严重到影响睡眠,甚至想搬走" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "几乎无噪音反馈，或仅少量反馈但一致认为静谧，适合噪音敏感人群。" },
+  { v: 2, label: "轻度", color: "#84cc16", desc: "有反馈提及偶发轻微声音，但普遍认为不影响日常居住。" },
+  { v: 3, label: "中度", color: "#d68910", desc: "多条反馈提及噪音有明显存在感，夜间可闻，休息会受一定干扰。" },
+  { v: 4, label: "严重", color: "#ef4444", desc: "反馈普遍反映噪音频繁且明显，日常生活和入睡受到持续干扰。" },
+  { v: 5, label: "极度", color: "#991b1b", desc: "大量反馈一致认为噪音严重难忍，已有业主因此考虑搬离。" },
 ];
 
 const NOISE_LEVELS = [
@@ -831,7 +834,8 @@ export default function App() {
             return { ...item, score: Math.max(1, Math.min(5, avgScore)), reviews: combinedCount, _hasApiData: true };
           } else {
             // ✅ 关键修复：Excel 没有评分但 API 有用户提交的评分 → 直接用 API 的评分
-            const avgScore = Math.round(api.total_score / api.review_count);
+            const k = 3;
+            const avgScore = Math.round((api.total_score + k * 3) / (api.review_count + k));
             return {
               ...item,
               score: Math.max(1, Math.min(5, avgScore)),
