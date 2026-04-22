@@ -19,37 +19,80 @@ const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
 const PAGE_SIZE = 3;
 
-// ============ 口径 ============
+// ============ 名称打码 & 地址脱敏工具 ============
+function maskCommunityName(name) {
+  if (!name) return "";
+  const len = name.length;
+  if (len <= 2) return name; // 太短不打码
+  if (len <= 4) {
+    // 3-4字：保留首尾，中间打码
+    return name[0] + "*".repeat(len - 2) + name[len - 1];
+  }
+  // 5字及以上：保留首尾各一字，中间两个字打码，其余保留
+  // 例: 阳光水岸苑 → 阳**岸苑, 中远两湾城 → 中**湾城
+  // 策略: 首字 + ** + 从第4字起到末尾
+  if (len === 5) {
+    return name[0] + "**" + name.slice(3);
+  }
+  // 6字及以上: 首字 + ** + 从第4字起
+  return name[0] + "**" + name.slice(3);
+}
+
+function anonymizeAddress(address, district) {
+  if (!address) return district || "";
+  // 移除门牌号、弄、号、室等精确信息
+  // 只保留到板块/路名级别，后面用*替代
+  // 例: "远景路97弄" → "远景路***"
+  // 例: "莘松路958号" → "莘松路***"
+  // 例: "真南路3489弄" → "真南路***"
+  let cleaned = address
+    .replace(/\d+[弄号室栋幢楼座][\d\-]*[号室]*/g, "***")  // 数字+弄/号/室
+    .replace(/\d+[-—]\d+/g, "***")  // 数字范围
+    .replace(/\d{2,}/g, "***")  // 连续2位以上数字
+    .replace(/\*{3,}/g, "***");  // 合并多个***
+  // 如果清理后和原文一样（没有数字），也截断到路名
+  if (cleaned === address && address.includes("路")) {
+    const idx = address.indexOf("路");
+    cleaned = address.slice(0, idx + 1) + "附近";
+  }
+  if (cleaned === address && address.includes("街")) {
+    const idx = address.indexOf("街");
+    cleaned = address.slice(0, idx + 1) + "附近";
+  }
+  return cleaned;
+}
+
+// ============ 口径（已改为中性客观表述） ============
 //详情页
 const SCORE_LEVELS_DETAIL = [
-  { v: 1, label: "安静", color: "#0a8554", desc: "无反馈或少量反馈且普遍安静 / 居住体验：完全无感干扰" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "少量反馈且偶有轻微声音 / 居住体验：不影响日常生活" },
-  { v: 3, label: "中度", color: "#d68910", desc: "一定量反馈且夜间噪音清晰可闻 / 居住体验：有时会受影响" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "较多反馈且公认噪音频繁明显 / 居住体验：日常生活受干扰" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "大量反馈且公认噪音严重难忍 / 居住体验：严重影响睡眠甚至想搬走" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "用户反馈较少或普遍反映环境安静 / 居住体感：基本无声音干扰" },
+  { v: 2, label: "较安静", color: "#84cc16", desc: "少量反馈提及偶有轻微声音 / 居住体感：对日常生活影响较小" },
+  { v: 3, label: "一般", color: "#d68910", desc: "有一定量反馈提及夜间可闻声音 / 居住体感：部分时段可感知" },
+  { v: 4, label: "较明显", color: "#ef4444", desc: "较多反馈提及声音频繁且可感知 / 居住体感：部分住户反映受到影响" },
+  { v: 5, label: "明显", color: "#991b1b", desc: "大量反馈一致反映声音存在感强 / 居住体感：多数住户反映日常受影响" },
 ];
 
 //提交页
 const SCORE_LEVELS_SUBMIT = [
-  { v: 1, label: "安静", color: "#0a8554", desc: "住着很安静,几乎没有噪音困扰,适合居住" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "偶尔能听到一些声音,但在可接受范围内,不影响居住" },
-  { v: 3, label: "中度", color: "#d68910", desc: "经常能听到噪音,有时候觉得吵,会对休息造成一定干扰" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "噪音非常明显且频繁,让人烦躁,严重干扰正常生活" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "吵到完全无法休息,甚至让人产生想搬走的念头" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "住着很安静,几乎没有声音困扰" },
+  { v: 2, label: "较安静", color: "#84cc16", desc: "偶尔能听到一些声音,但在可接受范围内" },
+  { v: 3, label: "一般", color: "#d68910", desc: "经常能听到声音,有时会注意到,对休息有一定影响" },
+  { v: 4, label: "较明显", color: "#ef4444", desc: "声音较为明显且频繁,对日常生活有一定影响" },
+  { v: 5, label: "明显", color: "#991b1b", desc: "声音存在感强,对日常休息有较大影响" },
 ];
 
 //评分标准说明
 const SCORE_LEVELS_GUIDE = [
-  { v: 1, label: "安静", color: "#0a8554", desc: "几乎无噪音反馈，或仅少量反馈但一致认为静谧，适合噪音敏感人群。" },
-  { v: 2, label: "轻度", color: "#84cc16", desc: "有反馈提及偶发轻微声音，但普遍认为不影响日常居住。" },
-  { v: 3, label: "中度", color: "#d68910", desc: "多条反馈提及噪音有明显存在感，夜间可闻，休息会受一定干扰。" },
-  { v: 4, label: "严重", color: "#ef4444", desc: "反馈普遍反映噪音频繁且明显，日常生活和入睡受到持续干扰。" },
-  { v: 5, label: "极度", color: "#991b1b", desc: "大量反馈一致认为噪音严重难忍，已有业主因此考虑搬离。" },
+  { v: 1, label: "安静", color: "#0a8554", desc: "几乎无声音反馈，或仅少量反馈但一致认为环境安静。" },
+  { v: 2, label: "较安静", color: "#84cc16", desc: "有反馈提及偶发轻微声音，但普遍认为不影响日常居住。" },
+  { v: 3, label: "一般", color: "#d68910", desc: "多条反馈提及声音有一定存在感，夜间可闻，休息可能受一定影响。" },
+  { v: 4, label: "较明显", color: "#ef4444", desc: "反馈普遍反映声音频繁且可感知，日常生活和休息受到一定影响。" },
+  { v: 5, label: "明显", color: "#991b1b", desc: "大量反馈一致反映声音存在感强，多数住户日常体感受到明显影响。" },
 ];
 
 const NOISE_LEVELS = [
-  { id: "neighbor", label: "隔音/邻居", icon: "🏠", desc: "隔音差 / 邻居吵闹" },
-  { id: "traffic", label: "交通/商业", icon: "🚗", desc: "高架 / 地铁 / 底商" },
+  { id: "neighbor", label: "邻里声音", icon: "🏠", desc: "楼上楼下 / 邻居活动声" },
+  { id: "traffic", label: "交通/商业", icon: "🚗", desc: "高架 / 地铁 / 底商等" },
 ];
 
 const DISTRICTS = ["全部", "浦东新区", "普陀区", "虹口区", "闵行区", "长宁区", "徐汇区", "黄浦区", "静安区", "杨浦区", "宝山区", "嘉定区", "松江区", "青浦区", "奉贤区", "金山区", "崇明区"];
@@ -70,7 +113,7 @@ function isValidScore(score) {
 function parseExcelRow(row, idx) {
   const safeNum = (v) => {
     const n = parseInt(v);
-    if (isNaN(n)) return null; // 返回 null 而不是默认值，表示"没有评分"
+    if (isNaN(n)) return null;
     return Math.max(1, Math.min(5, n));
   };
   const validLevels = NOISE_LEVELS.map(n => n.id);
@@ -81,7 +124,7 @@ function parseExcelRow(row, idx) {
     name: (row.name || "").toString().trim(),
     district: (row.district || "").toString().trim(),
     address: (row.address || "").toString().trim(),
-    score: parsedScore, // 可能是 null（表示Excel里没填评分）
+    score: parsedScore,
     noiseLevel: validLevels.includes(level) ? level : "neighbor",
     reviews: parseInt(row.review_count) || 0,
     source: (row.source_note || "").toString() || (parseInt(row.review_count) ? `${parseInt(row.review_count)}条用户整理` : "小红书用户整理"),
@@ -235,12 +278,15 @@ function QuotaBadge({ quota }) {
 }
 
 function CommunityCard({ item, onClick }) {
-  // ✅ 修复：用 isValidScore 替代 typeof 检查，防止 NaN 和 null 穿透
   const hasScore = isValidScore(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const reportCount = getReportCount(item.id);
   const totalReports = (item.reviews || 0) + reportCount;
+
+  // ✅ 前端展示使用打码名称和脱敏地址
+  const displayName = maskCommunityName(item.name);
+  const displayAddress = anonymizeAddress(item.address, item.district);
 
   return (
     <div onClick={onClick} style={{ ...cardStyle, padding: 16, cursor: "pointer", marginBottom: 10 }}>
@@ -250,7 +296,7 @@ function CommunityCard({ item, onClick }) {
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: -0.2 }}>{item.name}</h3>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: -0.2 }}>{displayName}</h3>
             {totalReports > 0 && <span style={{ fontSize: 12, color: C.textLight, flexShrink: 0 }}>已反馈 {totalReports} 次</span>}
           </div>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{item.district}</p>
@@ -289,7 +335,7 @@ function ScoreGuideModal({ onClose }) {
           <span onClick={onClose} style={{ fontSize: 24, color: C.textMuted, cursor: "pointer", lineHeight: 1 }}>×</span>
         </div>
         <p style={{ margin: "0 0 18px", fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
-          根据你的真实居住体验打分,1 分最安静,5 分最吵。
+          根据你的真实居住体验打分,1 分最安静,5 分声音存在感最强。
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {SCORE_LEVELS_GUIDE.map(l => (
@@ -380,15 +426,50 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
   );
 }
 
+// ============ 免责声明组件 ============
+function DisclaimerFooter() {
+  return (
+    <div style={{
+      margin: "24px 0 0",
+      padding: "20px 16px",
+      background: "#fff3e0",
+      border: "2px solid #ff9800",
+      borderRadius: 14,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 20 }}>⚠️</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "#e65100" }}>免责声明</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8 }}>
+        <p style={{ margin: "0 0 8px" }}>
+          <strong>1.</strong> 本平台为住户互助信息平台，所有数据均为住户主观体感反馈，非生态环境部门官方监测数据，不代表客观声环境质量。
+        </p>
+        <p style={{ margin: "0 0 8px" }}>
+          <strong>2.</strong> 平台仅客观汇总居住体验感受，不评价房屋质量、物业服务水平、开发商资质，所有信息不构成任何购房、租房决策建议。
+        </p>
+        <p style={{ margin: "0 0 8px" }}>
+          <strong>3.</strong> 为保护用户隐私及遵守相关法律法规，平台不对外公开展示任何用户文字评论内容。
+        </p>
+        <p style={{ margin: 0 }}>
+          <strong>4.</strong> 如相关权利人认为平台内容侵犯其合法权益，请联系我们，我们将及时核实并处理。
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ============ 详情页 ============
 function CommunityDetail({ item, onBack, onGoSubmit }) {
-  // ✅ 修复：用 isValidScore 替代 typeof 检查
   const hasScore = isValidScore(item.score);
   const noise = hasScore && item.noiseLevel ? getNoiseInfo(item.noiseLevel) : null;
   const level = hasScore ? getLevel(item.score) : null;
   const [showGuide, setShowGuide] = useState(false);
   const reportCount = getReportCount(item.id);
   const totalReports = (item.reviews || 0) + reportCount;
+
+  // ✅ 详情页也使用打码名称和脱敏地址
+  const displayName = maskCommunityName(item.name);
+  const displayAddress = anonymizeAddress(item.address, item.district);
 
   return (
     <div style={{ paddingBottom: 60 }}>
@@ -400,8 +481,8 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
             <div style={{ width: 72, height: 72, borderRadius: 36, background: C.bg, border: `2px dashed ${C.borderDark}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.textLight, flexShrink: 0 }}>暂无评分</div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>{item.name}</h2>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {item.address}</p>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>{displayName}</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{item.district} · {displayAddress}</p>
             {totalReports > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textLight }}>已被反馈 {totalReports} 次</p>}
           </div>
         </div>
@@ -410,7 +491,7 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
       {hasScore ? (
         <>
           <div style={cardStyle}>
-            <SectionTitle action={<InfoButton onClick={() => setShowGuide(true)} />}>噪音等级</SectionTitle>
+            <SectionTitle action={<InfoButton onClick={() => setShowGuide(true)} />}>声音感知等级</SectionTitle>
             <div style={{ padding: 14, borderRadius: 12, background: level.color + "10", border: `1px solid ${level.color}30` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 22, fontWeight: 700, color: level.color }}>{item.score}</span>
@@ -422,7 +503,7 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
 
           {noise && (
             <div style={cardStyle}>
-              <SectionTitle>主要噪音来源</SectionTitle>
+              <SectionTitle>主要声音来源</SectionTitle>
               <div style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 12, background: C.bg }}>
                 <div style={{ fontSize: 32 }}>{noise.icon}</div>
                 <div>
@@ -444,7 +525,7 @@ function CommunityDetail({ item, onBack, onGoSubmit }) {
 
       <div style={{ ...cardStyle, background: C.bannerBg, border: `1px solid ${C.bannerBorder}`, textAlign: "center" }}>
         <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: C.text }}>🏠 你也住在这里?</p>
-        <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>分享你的真实噪音体验,可获得 1–2 次额外查询机会</p>
+        <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>分享你的真实居住体验,可获得 1–2 次额外查询机会</p>
         <button onClick={onGoSubmit} style={{ padding: "10px 24px", borderRadius: 10, border: `1px solid ${C.text}`, background: "#fff", color: C.text, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>分享我的体验</button>
       </div>
 
@@ -473,6 +554,7 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
     if (!search.trim() || community) { setSuggestions([]); return; }
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
+      // ✅ 搜索时仍然匹配原始全名（未打码）
       const seedHits = currentSeedData.filter(s =>
         normalize(s.name).includes(normalize(search)) ||
         normalize(s.address).includes(normalize(search))
@@ -570,20 +652,21 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
                   onMouseEnter={e => e.currentTarget.style.background = C.bg}
                   onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
                   <div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-                    {s.name}
+                    {/* ✅ 搜索下拉中也显示打码名称 */}
+                    {maskCommunityName(s.name)}
                     {s.isAmap && <span style={{ fontSize: 10, padding: "2px 6px", background: "#e8f4fd", color: "#2563eb", borderRadius: 4, fontWeight: 400 }}>高德</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{s.district} · {s.address}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{s.district} · {anonymizeAddress(s.address, s.district)}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
-        {community && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#0a8554" }}>✓ 已选择: {community.name}</p>}
+        {community && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#0a8554" }}>✓ 已选择: {maskCommunityName(community.name)}</p>}
       </div>
 
       <div style={cardStyle}>
-        <SectionTitle hint="选一个最主要的噪音来源" required>主要噪音来源</SectionTitle>
+        <SectionTitle hint="选一个最主要的声音来源" required>主要声音来源</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {NOISE_LEVELS.map(t => {
             const active = noiseLevel === t.id;
@@ -600,10 +683,10 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
       <div style={cardStyle}>
         <div style={{ marginBottom: 14 }}>
           <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>
-            噪音严重程度 <span style={{ color: C.accent }}>*</span>
+            声音感知程度 <span style={{ color: C.accent }}>*</span>
           </h4>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: C.textLight }}>1 分安静,5 分最吵</span>
+            <span style={{ fontSize: 12, color: C.textLight }}>1 分安静,5 分最明显</span>
             <span onClick={() => setShowGuide(true)} style={{ width: 16, height: 16, borderRadius: 8, background: C.bg, border: `1px solid ${C.borderDark}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.textMuted, cursor: "pointer", fontWeight: 600 }}>?</span>
           </div>
         </div>
@@ -616,7 +699,7 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
         </div>
         <input type="range" min="1" max="5" step="1" value={score} onChange={e => setScore(parseInt(e.target.value))} style={{ width: "100%", accentColor: currentLevel.color }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: C.textLight }}>
-          <span>1 安静</span><span>3 中度</span><span>5 极吵</span>
+          <span>1 安静</span><span>3 一般</span><span>5 明显</span>
         </div>
       </div>
 
@@ -629,7 +712,7 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
           您懒可以不填哒，我们相信噪敏人会互帮互助 <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
         </p>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="隔音效果怎么样？什么时间段、什么类型的噪音？" rows={4}
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="居住环境怎么样？什么时间段、什么类型的声音？" rows={4}
           style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
@@ -671,6 +754,7 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
 
   let displayList;
   if (query.trim()) {
+    // ✅ 搜索仍然匹配原始全名（未打码），但展示时会通过 CommunityCard 自动打码
     const q = normalize(query);
     const seedHits = currentSeedData.filter(i => normalize(i.name).includes(q) || normalize(i.address).includes(q));
     const seedNames = new Set(seedHits.map(s => normalize(s.name)));
@@ -680,7 +764,6 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
     displayList = currentSeedData
       .filter(i => district === "全部" || i.district === district)
       .sort((a, b) => {
-        // ✅ 有评分的排前面，无评分的排后面
         const aValid = isValidScore(a.score);
         const bValid = isValidScore(b.score);
         if (aValid && !bValid) return -1;
@@ -752,6 +835,9 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
           onPageChange={(p) => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         />
       )}
+
+      {/* ✅ 首页底部显眼免责声明 */}
+      <DisclaimerFooter />
     </div>
   );
 }
@@ -805,7 +891,6 @@ export default function App() {
   const [showQuotaAlert, setShowQuotaAlert] = useState(false);
 
   const loadAndMergeData = async () => {
-    // 第一步：加载 Excel
     let excelRows = FALLBACK_DATA;
     try {
       const rows = await loadExcelData("/data.xlsx");
@@ -814,7 +899,6 @@ export default function App() {
     SEED_DATA = excelRows;
     setSeedData([...excelRows]);
 
-// 第二步：拉 API 做增量合并
     try {
       const r = await fetch(`${API_BASE}/api/stats`);
       const d = await r.json();
@@ -834,7 +918,6 @@ export default function App() {
           const excelHasScore = isValidScore(item.score);
 
           if (excelHasScore) {
-            // Excel 有评分：用 avg_score 重构总分后再加权
             const excelTotal = item.score * (item.reviews || 1);
             const excelCount = item.reviews || 1;
             const apiTotal = api.avg_score * api.review_count;
@@ -862,7 +945,6 @@ export default function App() {
         return item;
       });
 
-      // 处理 Excel 里完全没有、但 API 有的小区
       const excelKeys = new Set(excelRows.map(i => normalize(i.name) + "_" + normalize(i.district)));
       apiStats.forEach(s => {
         const key = normalize(s.community_name) + "_" + normalize(s.district);
@@ -895,11 +977,9 @@ export default function App() {
       console.warn("API 数据加载失败,继续使用 Excel 数据", e);
     }
 
-    // 第三步：合并本地提交队列的数据
     try {
       const queue = JSON.parse(localStorage.getItem(LS_KEY_PRIVATE_QUEUE) || "[]");
       if (queue.length > 0) {
-        // 按小区分组
         const localMap = {};
         queue.forEach(q => {
           const key = normalize(q.community.name) + "_" + normalize(q.community.district);
@@ -908,8 +988,7 @@ export default function App() {
           localMap[key].count += 1;
         });
 
-        // 当前 merged 数据的 key 集合（注意这里 merged 可能还叫 excelRows，取决于 API 是否成功）
-        const currentData = SEED_DATA; // 此时 SEED_DATA 已经是最新的
+        const currentData = SEED_DATA;
         const currentKeys = new Set(currentData.map(i => normalize(i.name) + "_" + normalize(i.district)));
 
         Object.entries(localMap).forEach(([key, local]) => {
@@ -917,16 +996,13 @@ export default function App() {
           if (idx !== -1) {
             const item = currentData[idx];
             if (isValidScore(item.score)) {
-              // 已有评分，加权合并
               const totalScore = item.score * (item.reviews || 1) + local.total;
               const totalCount = (item.reviews || 1) + local.count;
               currentData[idx] = { ...item, score: Math.max(1, Math.min(5, Math.round(totalScore / totalCount))), reviews: totalCount };
             } else {
-              // 无评分，直接用本地数据（本地是用户自己刚提交的，不做收缩）
               currentData[idx] = { ...item, score: Math.max(1, Math.min(5, Math.round(local.total / local.count))), reviews: local.count, noiseLevel: local.noiseLevel };
             }
           } else {
-            // 完全新的小区
             currentData.push({
               id: "local_" + key,
               name: local.name,
@@ -988,7 +1064,7 @@ export default function App() {
       <div style={{ padding: "16px 20px", background: "#fff", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>吵不吵 <span style={{ fontSize: 11, color: C.textLight, fontWeight: 500, letterSpacing: 0 }}>NoiseMirror</span></h1>
-          <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textLight }}>噪敏找房,就上吵不吵</p>
+          <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textLight }}>居住体验互助查询</p>
         </div>
         <div onClick={() => setShowProfile(true)} style={{ width: 36, height: 36, borderRadius: 18, background: submitCount > 0 ? C.text : C.bg, color: submitCount > 0 ? "#fff" : C.textMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
           {submitCount > 0 ? "✓" : "我"}
@@ -996,10 +1072,10 @@ export default function App() {
       </div>
 
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-        🧪 测试版 · 当前仅开放上海 · 噪敏找房人的互助平台
+        🧪 测试版 · 当前仅开放上海 · 住户居住体验互助平台
       </div>
       <div style={{ padding: "4px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, fontSize: 10, color: C.textLight, textAlign: "center", lineHeight: 1.4 }}>
-        评分数据来源于用户主观反馈,仅供参考,不构成任何决策建议
+        所有数据来源于住户主观体感反馈,仅供参考,不构成任何决策建议
       </div>
 
       <div style={{ padding: "16px 16px 96px" }}>
