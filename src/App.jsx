@@ -725,16 +725,20 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
           </div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          为保护用户隐私及遵守法规，平台将不公开展示用户文字评论 <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
+          <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
         </p>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="你住的开心吗？还是备受上下夹击的烦恼？请不要具体填写楼栋暴露隐私哦！" rows={4}
-          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="是否有小孩跑跳声？夜间睡得好吗？" rows={4}
+          style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
           <span>{trimmedComment.length} / {DESC_MIN_LEN}</span>
         </div>
       </div>
 
+      <p style={{ textAlign: "center", fontSize: 11, color: C.textLight, margin: "12px 0 4px", lineHeight: 1.5 }}>
+        为保护用户隐私及遵守法规，平台将不公开展示用户文字评论
+      </p>
+      
       <button onClick={handleSubmit} disabled={!canSubmit} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: canSubmit ? C.text : C.borderDark, color: "#fff", fontSize: 16, fontWeight: 600, cursor: canSubmit ? "pointer" : "not-allowed", marginTop: 8 }}>
         提交评价
       </button>
