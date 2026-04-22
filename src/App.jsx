@@ -440,19 +440,11 @@ function DisclaimerFooter() {
         <span style={{ fontSize: 20 }}>⚠️</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: "#e65100" }}>免责声明</span>
       </div>
-      <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8 }}>
-        <p style={{ margin: "0 0 8px" }}>
-          <strong>1.</strong> 所有数据均为住户主观体感，非官方监测，不代表客观声环境质量。
-        </p>
-        <p style={{ margin: "0 0 8px" }}>
-          <strong>2.</strong> 仅汇总居住感受，不评价房屋质量、物业服务，不构成购房租房建议。
-        </p>
-        <p style={{ margin: "0 0 8px" }}>
-          <strong>3.</strong> 为保护隐私及遵守法规，平台不对外展示用户文字评论。
-        </p>
-        <p style={{ margin: 0 }}>
-          <strong>4.</strong> 如认为内容侵犯合法权益，请联系我们，将及时核实处理。
-        </p>
+      <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8, textAlign: "left" }}>
+        <p style={{ margin: "0 0 4px" }}>1. 所有数据均为住户主观体感，非官方监测，不代表客观声环境质量。</p>
+        <p style={{ margin: "0 0 4px" }}>2. 仅汇总居住感受，不评价房屋质量、物业服务，不构成购房租房建议。</p>
+        <p style={{ margin: "0 0 4px" }}>3. 为保护隐私及遵守法规，平台不对外展示用户文字评论。</p>
+        <p style={{ margin: 0 }}>4. 如认为内容侵犯合法权益，请联系我们，将及时核实处理。</p>
       </div>
     </div>
   );
