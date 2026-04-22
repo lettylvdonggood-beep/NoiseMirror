@@ -442,10 +442,10 @@ function DisclaimerFooter() {
       </div>
       <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8 }}>
         <p style={{ margin: "0 0 8px" }}>
-          <strong>1.</strong> 本平台为住户互助信息平台，所有数据均为住户主观体感反馈，非生态环境部门官方监测数据，不代表客观声环境质量。
+          <strong>1.</strong> 本平台为住户互助信息平台，所有数据均为住户主观体感反馈，不代表客观声环境质量。
         </p>
         <p style={{ margin: "0 0 8px" }}>
-          <strong>2.</strong> 平台仅客观汇总居住体验感受，不评价房屋质量、物业服务水平、开发商资质，所有信息不构成任何购房、租房决策建议。
+          <strong>2.</strong> 平台仅客观汇总居住体验感受，不评价房屋质量、物业服务水平、所有信息不构成任何购房、租房决策建议。
         </p>
         <p style={{ margin: "0 0 8px" }}>
           <strong>3.</strong> 为保护用户隐私及遵守相关法律法规，平台不对外公开展示任何用户文字评论内容。
@@ -1064,7 +1064,7 @@ export default function App() {
       <div style={{ padding: "16px 20px", background: "#fff", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>吵不吵 <span style={{ fontSize: 11, color: C.textLight, fontWeight: 500, letterSpacing: 0 }}>NoiseMirror</span></h1>
-          <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textLight }}>居住体验互助查询</p>
+          <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textLight }}>噪敏人群的互助平台</p>
         </div>
         <div onClick={() => setShowProfile(true)} style={{ width: 36, height: 36, borderRadius: 18, background: submitCount > 0 ? C.text : C.bg, color: submitCount > 0 ? "#fff" : C.textMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
           {submitCount > 0 ? "✓" : "我"}
@@ -1072,10 +1072,10 @@ export default function App() {
       </div>
 
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-        🧪 测试版 · 当前仅开放上海 · 住户居住体验互助平台
+        🧪 测试版 · 当前仅开放上海 
       </div>
       <div style={{ padding: "4px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, fontSize: 10, color: C.textLight, textAlign: "center", lineHeight: 1.4 }}>
-        所有数据来源于住户主观体感反馈,仅供参考,不构成任何决策建议
+        根据网络合规及名誉权保护相关要求，小区名称已做匿名脱敏处理，仅作居住体感参考。
       </div>
 
       <div style={{ padding: "16px 16px 96px" }}>
