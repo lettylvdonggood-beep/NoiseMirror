@@ -437,7 +437,7 @@ function DisclaimerFooter() {
       border: "2px solid #ff9800",
       borderRadius: 14,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, justifyContent: "center"  }}>
         <span style={{ fontSize: 20 }}>⚠️</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: "#e65100" }}>免责声明</span>
       </div>
@@ -456,7 +456,7 @@ function MaskNoticeModal({ onClose }) {
         <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
         <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: C.text }}>关于小区名称显示</h3>
         <p style={{ margin: "0 0 24px", fontSize: 14, color: C.textMuted, lineHeight: 1.7 }}>
-          为保护相关权益，平台对小区名称需做隐藏处理。<br />
+          为保护相关权益，平台对小区名称需做加密处理。<br />
           但搜索时输入完整名称即可正常匹配，不影响查询使用。
         </p>
         <button onClick={onClose} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: C.text, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
@@ -725,7 +725,7 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
           </div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
+          如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
         </p>
         <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="是否有小孩跑跳声？夜间睡得好吗？" rows={4}
           style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
