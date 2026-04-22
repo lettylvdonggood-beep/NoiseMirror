@@ -456,8 +456,8 @@ function MaskNoticeModal({ onClose }) {
         <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
         <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: C.text }}>关于小区名称显示</h3>
         <p style={{ margin: "0 0 24px", fontSize: 14, color: C.textMuted, lineHeight: 1.7 }}>
-          为保护相关权益，平台对小区名称做了部分隐藏处理。<br />
-          搜索时输入完整名称即可正常匹配，不影响查询使用。
+          为保护相关权益，平台对小区名称需做隐藏处理。<br />
+          但搜索时输入完整名称即可正常匹配，不影响查询使用。
         </p>
         <button onClick={onClose} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: C.text, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
           我知道了
