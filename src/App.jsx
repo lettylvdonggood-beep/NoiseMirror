@@ -18,6 +18,7 @@ const QUOTA_PER_REVIEW = 1;
 const QUOTA_PER_REVIEW_WITH_DESC = 2;
 const DESC_MIN_LEN = 10;
 const PAGE_SIZE = 3;
+const LS_KEY_MASK_NOTICE = "noisemirror_mask_notice_seen";
 
 // ============ 名称打码 & 地址脱敏工具 ============
 function maskCommunityName(name) {
@@ -443,12 +444,35 @@ function DisclaimerFooter() {
       <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8, textAlign: "left" }}>
         <p style={{ margin: "0 0 4px" }}>1. 所有数据均为住户主观体感，非官方监测，不代表客观声环境质量。</p>
         <p style={{ margin: "0 0 4px" }}>2. 仅汇总居住感受，不评价房屋质量、物业服务，不构成购房租房建议。</p>
-        <p style={{ margin: "0 0 4px" }}>3. 为保护隐私及遵守法规，平台不对外展示用户文字评论。</p>
+        <p style={{ margin: "0 0 4px" }}>3. 为保护用户隐私及遵守法规，平台将不公开展示用户文字评论。</p>
         <p style={{ margin: 0 }}>4. 如认为内容侵犯合法权益，请联系我们，将及时核实处理。</p>
       </div>
     </div>
   );
 }
+function MaskNoticeModal({ onClose }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "28px 24px 36px", width: "100%", maxWidth: 430, textAlign: "center" }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+        <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: C.text }}>关于小区名称显示</h3>
+        <p style={{ margin: "0 0 24px", fontSize: 14, color: C.textMuted, lineHeight: 1.7 }}>
+          为保护相关权益，平台对小区名称做了部分隐藏处理。<br />
+          搜索时输入完整名称即可正常匹配，不影响查询使用。
+        </p>
+        <button onClick={onClose} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: C.text, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+          我知道了
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
 
 // ============ 详情页 ============
 function CommunityDetail({ item, onBack, onGoSubmit }) {
@@ -779,7 +803,7 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 搜索任意上海小区..."
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 请输入完整小区名(当前仅限上海)"
           style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: FONT, background: "#fff", color: C.text }} />
       </div>
 
@@ -881,6 +905,8 @@ export default function App() {
   const [quota, setQuotaState] = useState(0);
   const [seedData, setSeedData] = useState(SEED_DATA);
   const [showQuotaAlert, setShowQuotaAlert] = useState(false);
+  const [showMaskNotice, setShowMaskNotice] = useState(false);
+
 
   const loadAndMergeData = async () => {
     let excelRows = FALLBACK_DATA;
@@ -1021,6 +1047,9 @@ export default function App() {
     setQuotaState(getQuota());
     setSubmitCount(parseInt(localStorage.getItem(LS_KEY_SUBMITS) || "0", 10));
     loadAndMergeData();
+    if (!localStorage.getItem(LS_KEY_MASK_NOTICE)) {
+      setShowMaskNotice(true);
+}
   }, []);
 
   const handlePick = (item) => {
@@ -1040,6 +1069,11 @@ export default function App() {
     setTimeout(() => loadAndMergeData(), 500);
   };
 
+  const closeMaskNotice = () => {
+    localStorage.setItem(LS_KEY_MASK_NOTICE, "1");
+    setShowMaskNotice(false);
+  };
+  
   const goSubmit = () => { setPicked(null); setShowQuotaAlert(false); setTab("submit"); };
 
   const onResetData = () => {
@@ -1065,9 +1099,6 @@ export default function App() {
 
       <div style={{ padding: "6px 16px", background: "rgba(255, 248, 225, 0.5)", borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
         🧪 测试版 · 当前仅开放上海 
-      </div>
-      <div style={{ padding: "4px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, fontSize: 10, color: C.textLight, textAlign: "center", lineHeight: 1.4 }}>
-        根据网络合规及名誉权保护相关要求，小区名称已做匿名脱敏处理，仅作居住体感参考。
       </div>
 
       <div style={{ padding: "16px 16px 96px" }}>
@@ -1105,6 +1136,7 @@ export default function App() {
       )}
 
       {showProfile && <ProfilePanel onClose={() => setShowProfile(false)} quota={quota} submitCount={submitCount} onResetData={onResetData} />}
+      {showMaskNotice && <MaskNoticeModal onClose={closeMaskNotice} />}
     </div>
   );
 }
