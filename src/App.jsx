@@ -807,7 +807,7 @@ function HomeSearch({ onPick, onGoSubmit, currentSeedData, quota, submitCount })
 
       <div style={{ marginBottom: 14 }}>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="🔍 请输入完整小区名(当前仅限上海)"
-          style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: FONT, background: "#fff", color: C.text }} />
+          style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: FONT, background: "#fff", color: C.text }} />
       </div>
 
       {!query.trim() && (
