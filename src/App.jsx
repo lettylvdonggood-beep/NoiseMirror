@@ -444,8 +444,7 @@ function DisclaimerFooter() {
       <div style={{ fontSize: 12, color: "#5d4037", lineHeight: 1.8, textAlign: "left" }}>
         <p style={{ margin: "0 0 4px" }}>1. 所有数据均为住户主观体感，非官方监测，不代表客观声环境质量。</p>
         <p style={{ margin: "0 0 4px" }}>2. 仅汇总居住感受，不评价房屋质量、物业服务，不构成购房租房建议。</p>
-        <p style={{ margin: "0 0 4px" }}>3. 为保护用户隐私及遵守法规，平台将不公开展示用户文字评论。</p>
-        <p style={{ margin: 0 }}>4. 如认为内容侵犯合法权益，请联系我们，将及时核实处理。</p>
+        <p style={{ margin: "0 0 4px" }}>3. 如认为内容侵犯合法权益，请联系我们，将及时核实处理。</p>
       </div>
     </div>
   );
@@ -726,9 +725,9 @@ function SubmitForm({ onSubmitted, currentSeedData, onGoHome }) {
           </div>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 12, color: C.textMuted, lineHeight: 1.6, textAlign: "left" }}>
-          您懒可以不填哒，我们相信噪敏人会互帮互助 <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
+          为保护用户隐私及遵守法规，平台将不公开展示用户文字评论 <br /> 如果您填写≥{DESC_MIN_LEN} 字真实居住体验，立享额外 + 1 次查询权益！
         </p>
-        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="居住环境怎么样？什么时间段、什么类型的声音？" rows={4}
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="你住的开心吗？还是备受上下夹击的烦恼？请不要具体填写楼栋暴露隐私哦！" rows={4}
           style={{ width: "100%", padding: 14, borderRadius: 10, border: `1px solid ${C.borderDark}`, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: FONT, color: C.text, lineHeight: 1.5, background: "#fff" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: trimmedComment.length >= DESC_MIN_LEN ? "#0a8554" : C.textLight }}>
           <span>{trimmedComment.length >= DESC_MIN_LEN ? `✓ 已达标,额外 +1 次奖励已解锁` : `还差 ${Math.max(0, DESC_MIN_LEN - trimmedComment.length)} 字可额外 +1 次`}</span>
